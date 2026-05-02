@@ -6,11 +6,12 @@ struct Particle {
   glm::vec3 position;
   glm::vec3 velocity;
   glm::vec3 predicted;
-  float mass; // should be constant per particle for our use case
+  float mass; // assume constant per fluid particle
 
   // PBF
-  float lambda;
-  float density; // ρ
+  // stored here bc neighbors need to read λ_j
+  // area + distance constraints can be calced in solver
+  float lambda; // λ_i, density constraint (see eq.7 + PBF paper)
 
   // Gaussian
   // glm::vec3 scale;
