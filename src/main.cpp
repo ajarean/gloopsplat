@@ -19,9 +19,6 @@
 #include "camera.h"
 #include "shader.h"
 
-#include <memory>
-#include <vector>
-
 using namespace glm;
 
 // screen size
@@ -37,9 +34,6 @@ bool firstMouse = true;
 // timing
 float deltaTime = 0.0f;
 float lastFrame = 0.0f;
-
-// lighting
-vec3 lightPos(1.2f, 1.0f, 2.0f);
 
 // config
 bool isPaused = false;
@@ -87,35 +81,7 @@ int main() {
   glEnable(GL_DEPTH_TEST);
   glDisable(GL_CULL_FACE);
 
-  Shader shader("./shaders/shader.vs", "./shaders/shader.fs");
-
-  // render floor
-  float floorY = -5.0f;
-  float floorVertices[] = {
-    -10.0f, floorY, -10.0f,  0.0f, 1.0f, 0.0f,
-     10.0f, floorY, -10.0f,  0.0f, 1.0f, 0.0f,
-     10.0f, floorY,  10.0f,  0.0f, 1.0f, 0.0f,
-    -10.0f, floorY,  10.0f,  0.0f, 1.0f, 0.0f,
-  };
-  unsigned int floorIndices[] = { 0, 2, 1, 0, 3, 2 };
-
-  unsigned int floorVAO, floorVBO, floorEBO;
-  glGenVertexArrays(1, &floorVAO);
-  glGenBuffers(1, &floorVBO);
-  glGenBuffers(1, &floorEBO);
-
-  glBindVertexArray(floorVAO);
-  glBindBuffer(GL_ARRAY_BUFFER, floorVBO);
-  glBufferData(GL_ARRAY_BUFFER, sizeof(floorVertices), floorVertices, GL_STATIC_DRAW);
-  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, floorEBO);
-  glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(floorIndices), floorIndices, GL_STATIC_DRAW);
-
-  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
-  glEnableVertexAttribArray(0);
-  glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
-  glEnableVertexAttribArray(1);
-
-  glBindVertexArray(0);
+  Shader shader("./shaders/splat.vs", "./shaders/splat.fs");
 
   while (!glfwWindowShouldClose(window)) {
     float currentFrame = static_cast<float>(glfwGetTime());
@@ -141,24 +107,12 @@ int main() {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     shader.use();
-    shader.setVec3("lightColor",  vec3(1.0f, 1.0f, 1.0f));
-    shader.setVec3("lightPos", lightPos);
-    shader.setFloat("ambientStrength", 0.3f);
 
     mat4 projection = perspective(radians(camera.Zoom), (float)width / (float)height, 0.1f, 100.0f);
     shader.setMat4("projection", projection);
 
-    mat4 view = camera.GetViewMatrix();
-    shader.setMat4("view", view);
-
-    mat4 model = mat4(1.0f);
-    shader.setMat4("model", model);
-
-    // draw floor
-    shader.setVec3("objectColor", vec3(0.8f, 0.8f, 0.8f));
-    glBindVertexArray(floorVAO);
-    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-    glBindVertexArray(0);
+    mat4 modelView = camera.GetViewMatrix(); // model is identity
+    shader.setMat4("modelView", modelView);
 
     ImGui::Render();
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
