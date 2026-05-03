@@ -18,6 +18,7 @@
 
 #include "camera.h"
 #include "shader.h"
+#include "particle.h"
 
 using namespace glm;
 
@@ -83,6 +84,31 @@ int main() {
 
   Shader shader("./shaders/splat.vs", "./shaders/splat.fs");
 
+  Particle particle(glm::vec3(0.0f), 1.0f, 0.1f, glm::vec3(1.0, 0.0f, 0.0f), 1.0f);
+
+  float particleVertices[] = {
+    -1.0f, -1.0f, 0.0f,
+     1.0f, -1.0f, 0.0f,
+     1.0f,  1.0f, 0.0f,
+    -1.0f,  1.0f, 0.0f,
+  };
+  unsigned int particleIndices[] = { 0, 1, 2, 0, 2, 3 };
+
+  unsigned int VAO, VBO, EBO;
+  glGenVertexArrays(1, &VAO);
+  glGenBuffers(1, &VBO);
+  glGenBuffers(1, &EBO);
+
+  glBindVertexArray(VAO);
+  glBindBuffer(GL_ARRAY_BUFFER, VBO);
+  glBufferData(GL_ARRAY_BUFFER, sizeof(particleVertices), particleVertices, GL_STATIC_DRAW);
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+  glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(particleIndices), particleIndices, GL_STATIC_DRAW);
+
+  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+  glEnableVertexAttribArray(0);
+  glBindVertexArray(0);
+
   while (!glfwWindowShouldClose(window)) {
     float currentFrame = static_cast<float>(glfwGetTime());
     deltaTime = currentFrame - lastFrame;
@@ -106,13 +132,18 @@ int main() {
     glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    shader.use();
-
     mat4 projection = perspective(radians(camera.Zoom), (float)width / (float)height, 0.1f, 100.0f);
-    shader.setMat4("projection", projection);
-
     mat4 modelView = camera.GetViewMatrix(); // model is identity
+
+    shader.use();
+    shader.setMat4("projection", projection);
     shader.setMat4("modelView", modelView);
+    shader.setVec3("position", particle.position);
+    shader.setMat3("cov3d", particle.covariance());
+
+    glBindVertexArray(VAO);
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+    glBindVertexArray(0);
 
     ImGui::Render();
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
