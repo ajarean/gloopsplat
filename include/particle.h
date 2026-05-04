@@ -22,12 +22,11 @@ struct Particle {
   // Paper assumes fluids are spherical and equal in scale
   // Thus use radius directly, replace this w the above if we want to use solids
   float radius;
-  glm::vec3 color;
-  float opacity;
+  glm::vec4 color;
 
-  Particle(glm::vec3 position, float mass, float radius, glm::vec3 color, float opacity)
+  Particle(glm::vec3 position, float mass, float radius, glm::vec4 color)
     : position(position), velocity(0.0f), predicted(0.0f), mass(mass),
-      lambda(0.0f), radius(radius), color(color), opacity(opacity) {}
+      lambda(0.0f), radius(radius), color(color) {}
 
   glm::mat3 covariance() const {
     float r2 = radius * radius;

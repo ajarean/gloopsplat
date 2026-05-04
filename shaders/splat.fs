@@ -1,10 +1,15 @@
 #version 330 core
 
-in vec3 FragPos;
+in vec2 fragPos;
+in vec4 vColor;
 
-out vec4 FragColor;
+out vec4 fragColor;
 
 void main()
 {
-  FragColor = vec4(1.0, 1.0, 1.0, 1.0);
+  // see Botsch et al
+  float r = dot(fragPos, fragPos);
+  if (r > 1.0) discard;
+  float rho = exp(-r) * vColor.a;
+  fragColor = vec4(rho * vColor.rgb, rho);
 }

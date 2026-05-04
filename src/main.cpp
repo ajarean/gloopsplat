@@ -25,6 +25,7 @@ using namespace glm;
 // screen size
 int width = 1920;
 int height = 1080;
+glm::vec2 viewport = glm::vec2(width, height);
 
 // camera
 Camera camera(vec3(0.0f, 1.0f, 5.0f));
@@ -84,7 +85,7 @@ int main() {
 
   Shader shader("./shaders/splat.vs", "./shaders/splat.fs");
 
-  Particle particle(glm::vec3(0.0f), 1.0f, 0.1f, glm::vec3(1.0, 0.0f, 0.0f), 1.0f);
+  Particle particle(glm::vec3(0.0f), 1.0f, 0.1f, glm::vec4(1.0, 0.0f, 0.0f, 1.0f));
 
   float particleVertices[] = {
     -1.0f, -1.0f, 0.0f,
@@ -131,14 +132,22 @@ int main() {
 
     glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glDisable(GL_DEPTH_TEST);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     mat4 projection = perspective(radians(camera.Zoom), (float)width / (float)height, 0.1f, 100.0f);
     mat4 modelView = camera.GetViewMatrix(); // model is identity
+    float tanHalfFovy = tan(radians(camera.Zoom) * 0.5f);
+    vec2 focal = vec2((0.5f * (float)width) / tanHalfFovy, (0.5f * (float)height) / tanHalfFovy);
 
     shader.use();
     shader.setMat4("projection", projection);
     shader.setMat4("modelView", modelView);
+    shader.setVec2("focal", focal);
+    shader.setVec2("viewport", viewport);
     shader.setVec3("position", particle.position);
+    shader.setVec4("color", particle.color);
     shader.setMat3("cov3d", particle.covariance());
 
     glBindVertexArray(VAO);
@@ -186,6 +195,7 @@ void framebuffer_size_callback(GLFWwindow* window, int _width, int _height) {
   glViewport(0, 0, _width, _height);
   width = _width;
   height = _height;
+  viewport = glm::vec2(_width, _height);
 }
 
 void mouse_callback(GLFWwindow* window, double xposIn, double yposIn) {

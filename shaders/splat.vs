@@ -1,27 +1,40 @@
 #version 330 core
-
 layout (location = 0) in vec3 aPos;
-
 uniform mat4 projection;
 uniform mat4 modelView;
+uniform vec2 viewport;
+uniform vec2 focal;
 uniform vec3 position;
 uniform mat3 cov3d;
-
-out vec3 FragPos;
-
+uniform vec4 color;
+out vec4 vColor;
+out vec2 fragPos;
 void main()
 {
-  FragPos = position;
+  vColor = color;
   vec4 camPos = modelView * vec4(position, 1.0);
+  if (camPos.z > -0.1) return;
+  vec4 clipPos = projection * camPos;
 
-  float z2 = camPos.z*camPos.z;
   mat3 J = mat3(
-    1/camPos.z, 0, -camPos.x/z2,
-    0, 1/camPos.z, -camPos.y/z2,
-    0, 0, 0
+    focal.x / camPos.z, 0.0, -(focal.x * camPos.x) / (camPos.z * camPos.z),
+    0.0, focal.y / camPos.z, -(focal.y * camPos.y) / (camPos.z * camPos.z),
+    0.0, 0.0, 0.0
   );
   mat3 W = mat3(modelView);
-  mat2 cov2d = mat2(J*W*cov3d*transpose(W)*transpose(J));
+  mat3 cov2d = transpose(J) * W * cov3d * transpose(W) * J;
 
-  gl_Position = projection * (camPos + vec4(aPos * 0.1, 0.0));
+  // add low pass filter (2x2 identity)
+  cov2d[0][0] += 1.0;
+  cov2d[1][1] += 1.0;
+
+  // radii are equal for fluid particles
+  float d = sqrt(2.0 * (cov2d[0][0]));
+  fragPos = aPos.xy;
+  vec2 vCenter = clipPos.xy / clipPos.w;
+
+  gl_Position = vec4(
+    vCenter + aPos.xy * d / viewport,
+    0.0, 1.0
+  );
 }
