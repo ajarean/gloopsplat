@@ -81,14 +81,18 @@ int main() {
     std::cout << "Failed to initialize GLAD" << std::endl;
     return -1;
   }
-  glEnable(GL_DEPTH_TEST);
   glDisable(GL_CULL_FACE);
+  glDisable(GL_DEPTH_TEST);
 
   Shader shader("./shaders/splat.vs", "./shaders/splat.fs");
   SplatRenderer renderer;
 
-  Particle particle(glm::vec3(0.0f), 1.0f, 0.1f, glm::vec4(1.0, 0.0f, 0.0f, 1.0f));
-  std::vector<Particle> p = {particle};
+  std::vector<Particle> p;
+  for (int i = 0; i < 20; i++) {
+    glm::vec3 pos(i * 0.5f - 4.75f, 0.0f, 0.0f);
+    glm::vec4 color(1.0f, 0.5f, 0.5f, 0.5f);
+    p.emplace_back(pos, 1.0f, 0.1f, color);
+  }
 
   while (!glfwWindowShouldClose(window)) {
     float currentFrame = static_cast<float>(glfwGetTime());
@@ -113,7 +117,7 @@ int main() {
     glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
 
     mat4 projection = perspective(radians(camera.Zoom), (float)width / (float)height, 0.1f, 100.0f);
     mat4 modelView = camera.GetViewMatrix(); // model is identity

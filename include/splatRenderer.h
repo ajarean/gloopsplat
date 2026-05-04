@@ -8,13 +8,15 @@
 #include "shader.h"
 
 class SplatRenderer {
-private:
-  unsigned int VAO, VBO, EBO;
 public:
   SplatRenderer();
   ~SplatRenderer();
-  void draw(Shader &shader, std::vector<Particle> particles, glm::mat4 &projection, 
+  void draw(Shader &shader, std::vector<Particle> particles, glm::mat4 &projection,
     glm::mat4 &modelView, glm::vec2 &focal, glm::vec2 &viewport);
+private:
+  unsigned int VAO, VBO, EBO;
+  std::vector<unsigned int> indices;
+  void depthSort(const std::vector<Particle>& particles, const glm::mat4& modelView);
 };
 
 #endif

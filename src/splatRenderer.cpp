@@ -1,4 +1,5 @@
 #include "splatRenderer.h"
+#include <algorithm>
 
 SplatRenderer::SplatRenderer() {
   float vertices[] = {
@@ -34,13 +35,30 @@ void SplatRenderer::draw(Shader &shader, std::vector<Particle> particles, glm::m
   shader.setVec2("viewport", viewport);
 
   glBindVertexArray(VAO);
-  for (auto& p : particles) {
+  depthSort(particles, modelView);
+  for (int i : indices) {
+    Particle p = particles[i];
     shader.setVec3("position", p.position);
     shader.setVec4("color", p.color);
     shader.setFloat("radius", p.radius);
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
   }
   glBindVertexArray(0);
+}
+
+void SplatRenderer::depthSort(const std::vector<Particle>& particles, const glm::mat4& modelView) {
+  indices.resize(particles.size());
+  for (int i = 0; i < particles.size(); i++) {
+    indices[i] = i;
+    // float z = (modelView * glm::vec4(particles[i].position, 1.0f)).z;
+    // std::cout << "particle " << i << " z: " << z << std::endl;
+  }
+
+  std::sort(indices.begin(), indices.end(), [&](int a, int b) {
+    float z_a = (modelView*glm::vec4(particles[a].position, 1.0f)).z;
+    float z_b = (modelView*glm::vec4(particles[b].position, 1.0f)).z;
+    return z_a < z_b; // -z is more in front in opengl
+  });
 }
 
 SplatRenderer::~SplatRenderer() {
