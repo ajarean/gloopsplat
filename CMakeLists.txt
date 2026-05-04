@@ -39,3 +39,7 @@ add_custom_command(TARGET gloopsplat POST_BUILD
     "${CMAKE_CURRENT_SOURCE_DIR}/shaders"
     "$<TARGET_FILE_DIR:gloopsplat>/shaders"
 )
+
+add_executable(test_grid src/test_grid.cpp src/glad.c)
+target_include_directories(test_grid PRIVATE include)
+target_link_libraries(test_grid PRIVATE glm::glm)
