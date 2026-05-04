@@ -147,8 +147,8 @@ int main() {
     shader.setVec2("focal", focal);
     shader.setVec2("viewport", viewport);
     shader.setVec3("position", particle.position);
+    shader.setFloat("radius", particle.radius);
     shader.setVec4("color", particle.color);
-    shader.setMat3("cov3d", particle.covariance());
 
     glBindVertexArray(VAO);
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);

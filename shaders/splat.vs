@@ -5,7 +5,7 @@ uniform mat4 modelView;
 uniform vec2 viewport;
 uniform vec2 focal;
 uniform vec3 position;
-uniform mat3 cov3d;
+uniform float radius;
 uniform vec4 color;
 out vec4 vColor;
 out vec2 fragPos;
@@ -22,13 +22,15 @@ void main()
     0.0, 0.0, 0.0
   );
   mat3 W = mat3(modelView);
+  // assume radii are equal for fluid particles
+  mat3 cov3d = mat3(radius*radius);
   mat3 cov2d = transpose(J) * W * cov3d * transpose(W) * J;
 
   // add low pass filter (2x2 identity)
   cov2d[0][0] += 1.0;
   cov2d[1][1] += 1.0;
 
-  // radii are equal for fluid particles
+  // follows from fluid assumption
   float d = sqrt(2.0 * (cov2d[0][0]));
   fragPos = aPos.xy;
   vec2 vCenter = clipPos.xy / clipPos.w;

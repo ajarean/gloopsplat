@@ -27,11 +27,6 @@ struct Particle {
   Particle(glm::vec3 position, float mass, float radius, glm::vec4 color)
     : position(position), velocity(0.0f), predicted(0.0f), mass(mass),
       lambda(0.0f), radius(radius), color(color) {}
-
-  glm::mat3 covariance() const {
-    float r2 = radius * radius;
-    return glm::mat3(r2); // r2 * I
-  }
 };
 
 #endif
