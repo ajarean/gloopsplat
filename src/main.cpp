@@ -17,6 +17,7 @@
 #include "imgui_impl_opengl3.h"
 
 #include "camera.h"
+#include "splatRenderer.h"
 #include "shader.h"
 #include "particle.h"
 
@@ -84,31 +85,10 @@ int main() {
   glDisable(GL_CULL_FACE);
 
   Shader shader("./shaders/splat.vs", "./shaders/splat.fs");
+  SplatRenderer renderer;
 
   Particle particle(glm::vec3(0.0f), 1.0f, 0.1f, glm::vec4(1.0, 0.0f, 0.0f, 1.0f));
-
-  float particleVertices[] = {
-    -1.0f, -1.0f, 0.0f,
-     1.0f, -1.0f, 0.0f,
-     1.0f,  1.0f, 0.0f,
-    -1.0f,  1.0f, 0.0f,
-  };
-  unsigned int particleIndices[] = { 0, 1, 2, 0, 2, 3 };
-
-  unsigned int VAO, VBO, EBO;
-  glGenVertexArrays(1, &VAO);
-  glGenBuffers(1, &VBO);
-  glGenBuffers(1, &EBO);
-
-  glBindVertexArray(VAO);
-  glBindBuffer(GL_ARRAY_BUFFER, VBO);
-  glBufferData(GL_ARRAY_BUFFER, sizeof(particleVertices), particleVertices, GL_STATIC_DRAW);
-  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-  glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(particleIndices), particleIndices, GL_STATIC_DRAW);
-
-  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-  glEnableVertexAttribArray(0);
-  glBindVertexArray(0);
+  std::vector<Particle> p = {particle};
 
   while (!glfwWindowShouldClose(window)) {
     float currentFrame = static_cast<float>(glfwGetTime());
@@ -132,7 +112,6 @@ int main() {
 
     glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    glDisable(GL_DEPTH_TEST);
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
@@ -141,18 +120,7 @@ int main() {
     float tanHalfFovy = tan(radians(camera.Zoom) * 0.5f);
     vec2 focal = vec2((0.5f * (float)width) / tanHalfFovy, (0.5f * (float)height) / tanHalfFovy);
 
-    shader.use();
-    shader.setMat4("projection", projection);
-    shader.setMat4("modelView", modelView);
-    shader.setVec2("focal", focal);
-    shader.setVec2("viewport", viewport);
-    shader.setVec3("position", particle.position);
-    shader.setFloat("radius", particle.radius);
-    shader.setVec4("color", particle.color);
-
-    glBindVertexArray(VAO);
-    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-    glBindVertexArray(0);
+    renderer.draw(shader, p, projection, modelView, focal, viewport);
 
     ImGui::Render();
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
