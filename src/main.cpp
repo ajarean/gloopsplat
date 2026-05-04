@@ -18,6 +18,7 @@
 
 #include "camera.h"
 #include "shader.h"
+#include "scene.h"
 
 using namespace glm;
 
@@ -82,6 +83,11 @@ int main() {
   glDisable(GL_CULL_FACE);
 
   Shader shader("./shaders/splat.vs", "./shaders/splat.fs");
+  Scene scene;
+  scene.addParticle(glm::vec3(0.0f, 3.0f, 0.0f), 1.0f, 0.1f, glm::vec3(0.0f, 0.5f, 1.0f), 1.0f);
+  scene.addParticle(glm::vec3(0.5f, 5.0f, 0.0f), 1.0f, 0.1f, glm::vec3(1.0f, 0.3f, 0.0f), 1.0f);
+  scene.addParticle(glm::vec3(-0.5f, 4.0f, 0.0f), 1.0f, 0.1f, glm::vec3(0.2f, 1.0f, 0.3f), 1.0f);
+
 
   while (!glfwWindowShouldClose(window)) {
     float currentFrame = static_cast<float>(glfwGetTime());
@@ -107,6 +113,10 @@ int main() {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     shader.use();
+
+    if(!isPaused){
+      scene.update(deltaTime);
+    }
 
     mat4 projection = perspective(radians(camera.Zoom), (float)width / (float)height, 0.1f, 100.0f);
     shader.setMat4("projection", projection);
