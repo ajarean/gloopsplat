@@ -26,4 +26,4 @@ out/
 CMakeSettings.json
 .vscode/
 imgui.ini
-src/test_grid.cpp
+src/test*.cpp
