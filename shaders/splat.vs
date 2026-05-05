@@ -14,6 +14,7 @@ uniform vec3 normal;
 out vec4 vColor;
 out vec3 vNormal;
 out vec2 fragPos;
+out float vDepth;
 
 void main()
 {
@@ -21,6 +22,7 @@ void main()
   vNormal = normal;
   vec4 camPos = modelView * vec4(position, 1.0);
   if (camPos.z > -0.1) return;
+  vDepth = -camPos.z;
   vec4 clipPos = projection * camPos;
 
   mat3 J = mat3(

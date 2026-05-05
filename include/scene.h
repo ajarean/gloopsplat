@@ -9,7 +9,7 @@ struct Scene {
     std::vector<Particle> particles;
     Solver solver;
 
-    Scene(float h = 1.0f, float gravity = 9.8f, float rho0 = 100.0f, float epsilon = 100.0f) 
+    Scene(float h = 0.3f, float gravity = 9.8f, float rho0 = 100.0f, float epsilon = 100.0f) 
         : solver(h, gravity, rho0, epsilon) {}
 
     void addParticle(glm::vec3 position, float mass, float radius, glm::vec4 color) {
@@ -24,12 +24,12 @@ struct Scene {
         solver.update(particles, dt);
     }
     void addBlock(glm::vec3 origin, int nx, int ny, int nz, float spacing,
-                float mass, float radius, glm::vec3 color, float opacity) {
+                float mass, float radius, glm::vec4 color) {
         for (int x = 0; x < nx; x++)
         for (int y = 0; y < ny; y++)
         for (int z = 0; z < nz; z++) {
             glm::vec3 pos = origin + glm::vec3(x, y, z) * spacing;
-            addParticle(pos, mass, radius, glm::vec4(color, opacity));
+            addParticle(pos, mass, radius, color);
         }
     }
 };
