@@ -27,7 +27,7 @@ SplatRenderer::SplatRenderer() {
 
 void SplatRenderer::draw(Shader &shader, std::vector<Particle> particles, glm::mat4 &projection,
     glm::mat4 &modelView, glm::vec2 &focal, glm::vec2 &viewport) {
-  shader.use();
+  // shader.use();
   // uniform per gaussian
   shader.setMat4("projection", projection);
   shader.setMat4("modelView", modelView);

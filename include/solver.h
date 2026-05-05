@@ -32,15 +32,16 @@ struct Solver {
     void update(std::vector<Particle>& particles, float dt){
         applyForcesAndPredict(particles,dt);
         grid.build(particles);
+        std::vector<std::vector<int>> neighborList(particles.size());
+        for(int i = 0; i < (int)particles.size(); i++){
+            neighborList[i] = grid.neighbors(particles[i].predicted, particles);
+        }
         for(int i=0; i<iterations; i++){
-            std::vector<std::vector<int>> neighborList(particles.size());
-            for(int i = 0; i < (int)particles.size(); i++){
-                neighborList[i] = grid.neighbors(particles[i].predicted, particles);
-            }
             calculateLambda(particles, neighborList);
             updatePositions(particles, neighborList);
             applyBoundaryConditions(particles);
         }
+        computeNormals(particles, neighborList);
         updateVelocities(particles,dt);
     }
 
@@ -123,7 +124,7 @@ private:
     void applyBoundaryConditions(std::vector<Particle>& particles) {
         // axis aligned box for now; can replace with something more complex if needed
         const float floor_y  =  0.0f;
-        const float wall_x   =  1.0f;
+        const float wall_x   =  1.5f;
         const float wall_z   =  1.0f;
 
         for (auto& p : particles) {
@@ -134,6 +135,21 @@ private:
             if (p.predicted.x >  wall_x - p.radius) p.predicted.x =  wall_x - p.radius;
             if (p.predicted.z < -wall_z + p.radius) p.predicted.z = -wall_z + p.radius;
             if (p.predicted.z >  wall_z - p.radius) p.predicted.z =  wall_z - p.radius;
+        }
+    }
+
+    // eq 8
+    void computeNormals(std::vector<Particle>& particles, const std::vector<std::vector<int>>& neighborList){
+        float epsilon = 1e-6;
+        for(int i = 0; i < particles.size(); i++){
+            Particle& p_i = particles[i];
+            glm::vec3 grad(0.0f);
+            for(int j : neighborList[i]){
+                if(i==j) continue;
+                grad += spiky_grad(p_i.position - particles[j].position, h, spiky_coeff);
+            }
+            float len = glm::length(grad);
+            p_i.normal = len > epsilon ? -grad / len : glm::vec3(0.0f, 1.0f, 0.0f);
         }
     }
 };
