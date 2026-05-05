@@ -20,6 +20,7 @@
 #include "splatRenderer.h"
 #include "shader.h"
 #include "particle.h"
+#include "scene.h"
 
 using namespace glm;
 
@@ -39,7 +40,7 @@ float deltaTime = 0.0f;
 float lastFrame = 0.0f;
 
 // config
-bool isPaused = false;
+bool isPaused = true;
 
 void framebuffer_size_callback(GLFWwindow* window, int _width, int _height);
 void mouse_callback(GLFWwindow* window, double xposIn, double yposIn);
@@ -86,13 +87,18 @@ int main() {
 
   Shader shader("./shaders/splat.vs", "./shaders/splat.fs");
   SplatRenderer renderer;
+  Scene scene;
+  scene.addParticle(glm::vec3(0.0f, 3.0f, 0.0f), 1.0f, 0.1f, glm::vec4(0.0f, 0.5f, 1.0f, 0.8f));
+  scene.addParticle(glm::vec3(0.5f, 5.0f, 0.0f), 1.0f, 0.1f, glm::vec4(1.0f, 0.3f, 0.0f, 0.8f));
+  scene.addParticle(glm::vec3(-0.5f, 4.0f, 0.0f), 1.0f, 0.1f, glm::vec4(0.2f, 1.0f, 0.3f, 0.8f));
 
-  std::vector<Particle> p;
-  for (int i = 0; i < 20; i++) {
-    glm::vec3 pos(i * 0.5f - 4.75f, 0.0f, 0.0f);
-    glm::vec4 color(1.0f, 0.5f, 0.5f, 0.5f);
-    p.emplace_back(pos, 1.0f, 0.1f, color);
-  }
+  // std::vector<Particle> p;
+  // for (int i = 0; i < 20; i++) {
+  //   glm::vec3 pos(i * 0.5f - 4.75f, 0.0f, 0.0f);
+  //   glm::vec4 color(1.0f, 0.5f, 0.5f, 0.5f);
+  //   // p.emplace_back(pos, 1.0f, 0.1f, color);
+  //   scene.addParticle(Particle(pos, 1.0f, 0.1f, color));
+  // }
 
   while (!glfwWindowShouldClose(window)) {
     float currentFrame = static_cast<float>(glfwGetTime());
@@ -119,12 +125,16 @@ int main() {
     glEnable(GL_BLEND);
     glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
 
+    if(!isPaused){
+      scene.update(deltaTime);
+    }
+
     mat4 projection = perspective(radians(camera.Zoom), (float)width / (float)height, 0.1f, 100.0f);
     mat4 modelView = camera.GetViewMatrix(); // model is identity
     float tanHalfFovy = tan(radians(camera.Zoom) * 0.5f);
     vec2 focal = vec2((0.5f * (float)width) / tanHalfFovy, (0.5f * (float)height) / tanHalfFovy);
 
-    renderer.draw(shader, p, projection, modelView, focal, viewport);
+    renderer.draw(shader, scene.particles, projection, modelView, focal, viewport);
 
     ImGui::Render();
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
