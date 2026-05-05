@@ -87,11 +87,15 @@ int main() {
 
   Shader shader("./shaders/splat.vs", "./shaders/splat.fs");
   SplatRenderer renderer;
-  Scene scene;
+
+  Scene scene(0.4f, 9.8f, 65.0f, 200.0f);
+  scene.addBlock(glm::vec3(-0.75f, 0.5f, -0.75f), 7, 7, 7, 0.3f, 1.0f, 0.1f, glm::vec3(0.0f, 0.5f, 1.0f), 1.0f);
+  // scene.addBlock(glm::vec3(-1.0f, 0.5f, -1.0f), 5, 5, 5, 0.2f, 1.0f, 0.1f, glm::vec3(0.0f, 0.5f, 1.0f), 1.0f);
 
   while (!glfwWindowShouldClose(window)) {
     float currentFrame = static_cast<float>(glfwGetTime());
     deltaTime = currentFrame - lastFrame;
+    deltaTime = glm::min(deltaTime, 0.016f); //cap to 60fps
     lastFrame = currentFrame;
     processInput(window);
 
