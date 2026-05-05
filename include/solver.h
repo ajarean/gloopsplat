@@ -117,8 +117,8 @@ private:
     void applyBoundaryConditions(std::vector<Particle>& particles) {
         // axis aligned box for now; can replace with something more complex if needed
         const float floor_y  =  0.0f;
-        const float wall_x   =  3.0f;
-        const float wall_z   =  3.0f;
+        const float wall_x   =  1.0f;
+        const float wall_z   =  1.0f;
 
         for (auto& p : particles) {
             if (p.predicted.y < floor_y + p.radius) {
