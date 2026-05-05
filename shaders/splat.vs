@@ -1,5 +1,7 @@
 #version 330 core
+
 layout (location = 0) in vec3 aPos;
+
 uniform mat4 projection;
 uniform mat4 modelView;
 uniform vec2 viewport;
@@ -7,11 +9,16 @@ uniform vec2 focal;
 uniform vec3 position;
 uniform float radius;
 uniform vec4 color;
+uniform vec3 normal;
+
 out vec4 vColor;
+out vec3 vNormal;
 out vec2 fragPos;
+
 void main()
 {
   vColor = color;
+  vNormal = normal;
   vec4 camPos = modelView * vec4(position, 1.0);
   if (camPos.z > -0.1) return;
   vec4 clipPos = projection * camPos;

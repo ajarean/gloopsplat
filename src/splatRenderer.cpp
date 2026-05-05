@@ -33,6 +33,7 @@ void SplatRenderer::draw(Shader &shader, std::vector<Particle> particles, glm::m
   shader.setMat4("modelView", modelView);
   shader.setVec2("focal", focal);
   shader.setVec2("viewport", viewport);
+  shader.setVec3("lightDir", glm::normalize(glm::vec3(1.0f, 1.0f, 1.0f)));
 
   glBindVertexArray(VAO);
   depthSort(particles, modelView);
@@ -40,6 +41,7 @@ void SplatRenderer::draw(Shader &shader, std::vector<Particle> particles, glm::m
     Particle p = particles[i];
     shader.setVec3("position", p.position);
     shader.setVec4("color", p.color);
+    shader.setVec3("normal", p.normal);
     shader.setFloat("radius", p.radius);
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
   }
