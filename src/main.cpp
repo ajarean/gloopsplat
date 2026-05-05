@@ -17,7 +17,9 @@
 #include "imgui_impl_opengl3.h"
 
 #include "camera.h"
+#include "splatRenderer.h"
 #include "shader.h"
+#include "particle.h"
 #include "scene.h"
 
 using namespace glm;
@@ -25,6 +27,7 @@ using namespace glm;
 // screen size
 int width = 1920;
 int height = 1080;
+glm::vec2 viewport = glm::vec2(width, height);
 
 // camera
 Camera camera(vec3(0.0f, 1.0f, 5.0f));
@@ -37,7 +40,7 @@ float deltaTime = 0.0f;
 float lastFrame = 0.0f;
 
 // config
-bool isPaused = false;
+bool isPaused = true;
 
 void framebuffer_size_callback(GLFWwindow* window, int _width, int _height);
 void mouse_callback(GLFWwindow* window, double xposIn, double yposIn);
@@ -79,15 +82,23 @@ int main() {
     std::cout << "Failed to initialize GLAD" << std::endl;
     return -1;
   }
-  glEnable(GL_DEPTH_TEST);
   glDisable(GL_CULL_FACE);
+  glDisable(GL_DEPTH_TEST);
 
   Shader shader("./shaders/splat.vs", "./shaders/splat.fs");
+  SplatRenderer renderer;
   Scene scene;
-  scene.addParticle(glm::vec3(0.0f, 3.0f, 0.0f), 1.0f, 0.1f, glm::vec3(0.0f, 0.5f, 1.0f), 1.0f);
-  scene.addParticle(glm::vec3(0.5f, 5.0f, 0.0f), 1.0f, 0.1f, glm::vec3(1.0f, 0.3f, 0.0f), 1.0f);
-  scene.addParticle(glm::vec3(-0.5f, 4.0f, 0.0f), 1.0f, 0.1f, glm::vec3(0.2f, 1.0f, 0.3f), 1.0f);
+  scene.addParticle(glm::vec3(0.0f, 3.0f, 0.0f), 1.0f, 0.1f, glm::vec4(0.0f, 0.5f, 1.0f, 0.8f));
+  scene.addParticle(glm::vec3(0.5f, 5.0f, 0.0f), 1.0f, 0.1f, glm::vec4(1.0f, 0.3f, 0.0f, 0.8f));
+  scene.addParticle(glm::vec3(-0.5f, 4.0f, 0.0f), 1.0f, 0.1f, glm::vec4(0.2f, 1.0f, 0.3f, 0.8f));
 
+  // std::vector<Particle> p;
+  // for (int i = 0; i < 20; i++) {
+  //   glm::vec3 pos(i * 0.5f - 4.75f, 0.0f, 0.0f);
+  //   glm::vec4 color(1.0f, 0.5f, 0.5f, 0.5f);
+  //   // p.emplace_back(pos, 1.0f, 0.1f, color);
+  //   scene.addParticle(Particle(pos, 1.0f, 0.1f, color));
+  // }
 
   while (!glfwWindowShouldClose(window)) {
     float currentFrame = static_cast<float>(glfwGetTime());
@@ -111,18 +122,19 @@ int main() {
 
     glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-    shader.use();
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
 
     if(!isPaused){
       scene.update(deltaTime);
     }
 
     mat4 projection = perspective(radians(camera.Zoom), (float)width / (float)height, 0.1f, 100.0f);
-    shader.setMat4("projection", projection);
-
     mat4 modelView = camera.GetViewMatrix(); // model is identity
-    shader.setMat4("modelView", modelView);
+    float tanHalfFovy = tan(radians(camera.Zoom) * 0.5f);
+    vec2 focal = vec2((0.5f * (float)width) / tanHalfFovy, (0.5f * (float)height) / tanHalfFovy);
+
+    renderer.draw(shader, scene.particles, projection, modelView, focal, viewport);
 
     ImGui::Render();
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
@@ -165,6 +177,7 @@ void framebuffer_size_callback(GLFWwindow* window, int _width, int _height) {
   glViewport(0, 0, _width, _height);
   width = _width;
   height = _height;
+  viewport = glm::vec2(_width, _height);
 }
 
 void mouse_callback(GLFWwindow* window, double xposIn, double yposIn) {

@@ -11,8 +11,12 @@ struct Scene {
 
     Scene(float h = 1.0f, float rho0 = 1000.0f) : solver(h, rho0) {}
 
-    void addParticle(glm::vec3 position, float mass, float radius, glm::vec3 color, float opacity) {
-        particles.emplace_back(position, mass, radius, color, opacity);
+    void addParticle(glm::vec3 position, float mass, float radius, glm::vec4 color) {
+        particles.emplace_back(position, mass, radius, color);
+    }
+
+    void addParticle(const Particle &p) {
+        particles.push_back(p);
     }
 
     void update(float dt) {

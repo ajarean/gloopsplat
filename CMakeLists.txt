@@ -27,6 +27,7 @@ add_executable(gloopsplat
   src/main.cpp
   src/glad.c
   src/shader.cpp
+  src/splatRenderer.cpp
   ${IMGUI_SOURCES}
 )
 

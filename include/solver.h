@@ -26,7 +26,7 @@ private:
     //pbf muller et al algo1 lines 1-4
     void applyForcesAndPredict(std::vector<Particle>& particles, float dt){
         for(auto& p : particles) {
-            p.velocity += dt + glm::vec3(0.0f, -gravity, 0.0f);
+            p.velocity += dt * glm::vec3(0.0f, -gravity, 0.0f);
             p.predicted = p.position + dt*p.velocity;
         }
     }
