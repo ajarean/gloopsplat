@@ -87,22 +87,15 @@ int main() {
 
   Shader shader("./shaders/splat.vs", "./shaders/splat.fs");
   SplatRenderer renderer;
-  Scene scene;
-  scene.addParticle(glm::vec3(0.0f, 3.0f, 0.0f), 1.0f, 0.1f, glm::vec4(0.0f, 0.5f, 1.0f, 0.8f));
-  scene.addParticle(glm::vec3(0.5f, 5.0f, 0.0f), 1.0f, 0.1f, glm::vec4(1.0f, 0.3f, 0.0f, 0.8f));
-  scene.addParticle(glm::vec3(-0.5f, 4.0f, 0.0f), 1.0f, 0.1f, glm::vec4(0.2f, 1.0f, 0.3f, 0.8f));
 
-  // std::vector<Particle> p;
-  // for (int i = 0; i < 20; i++) {
-  //   glm::vec3 pos(i * 0.5f - 4.75f, 0.0f, 0.0f);
-  //   glm::vec4 color(1.0f, 0.5f, 0.5f, 0.5f);
-  //   // p.emplace_back(pos, 1.0f, 0.1f, color);
-  //   scene.addParticle(Particle(pos, 1.0f, 0.1f, color));
-  // }
+  Scene scene(0.4f, 9.8f, 65.0f, 200.0f);
+  scene.addBlock(glm::vec3(-0.75f, 0.5f, -0.75f), 7, 7, 7, 0.3f, 1.0f, 0.1f, glm::vec3(0.0f, 0.5f, 1.0f), 1.0f);
+  // scene.addBlock(glm::vec3(-1.0f, 0.5f, -1.0f), 5, 5, 5, 0.2f, 1.0f, 0.1f, glm::vec3(0.0f, 0.5f, 1.0f), 1.0f);
 
   while (!glfwWindowShouldClose(window)) {
     float currentFrame = static_cast<float>(glfwGetTime());
     deltaTime = currentFrame - lastFrame;
+    deltaTime = glm::min(deltaTime, 0.016f); //cap to 60fps
     lastFrame = currentFrame;
     processInput(window);
 
