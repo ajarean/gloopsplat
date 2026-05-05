@@ -33,8 +33,12 @@ struct Solver {
         applyForcesAndPredict(particles,dt);
         grid.build(particles);
         for(int i=0; i<iterations; i++){
-            calculateLambda(particles);
-            updatePositions(particles);
+            std::vector<std::vector<int>> neighborList(particles.size());
+            for(int i = 0; i < (int)particles.size(); i++){
+                neighborList[i] = grid.neighbors(particles[i].predicted, particles);
+            }
+            calculateLambda(particles, neighborList);
+            updatePositions(particles, neighborList);
             applyBoundaryConditions(particles);
         }
         updateVelocities(particles,dt);
@@ -57,10 +61,11 @@ private:
         }
     }
 
-    void calculateLambda(std::vector<Particle>& particles){
+    void calculateLambda(std::vector<Particle>& particles, const std::vector<std::vector<int>>& neighborList){
         for(int i = 0; i<particles.size(); i++){
             Particle& p_i = particles[i];
-            auto neighbors = grid.neighbors(p_i.predicted, particles);
+            // auto neighbors = grid.neighbors(p_i.predicted, particles);
+            auto neighbors = neighborList[i];
 
             float rho_i = 0.0f;
             // eq2
@@ -91,12 +96,13 @@ private:
 
     // eq12; algo 1 lines 13, 17
     // delta p_i = 1/rho0 * Sigma_j((lambda_i + lambda_j) * gradW(p_i - p_j, h))
-    void updatePositions(std::vector<Particle>& particles){
+    void updatePositions(std::vector<Particle>& particles, const std::vector<std::vector<int>>& neighborList){
         // algo 1 line 13
         std::vector<glm::vec3> deltas(particles.size(), glm::vec3(0.0f));
         for(int i = 0; i<particles.size(); i++){
             Particle& p_i = particles[i];
-            auto neighbors = grid.neighbors(p_i.predicted, particles);
+            // auto neighbors = grid.neighbors(p_i.predicted, particles);
+            auto neighbors = neighborList[i];
 
             for(int j : neighbors){
                 if (i==j) continue; //skip self
