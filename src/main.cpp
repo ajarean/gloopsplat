@@ -88,9 +88,9 @@ int main() {
   Shader shader("./shaders/splat.vs", "./shaders/splat.fs");
   SplatRenderer renderer;
   Scene scene;
-  scene.addParticle(glm::vec3(0.0f, 3.0f, 0.0f), 1.0f, 0.1f, glm::vec4(0.0f, 0.5f, 1.0f, 0.8f));
-  scene.addParticle(glm::vec3(0.5f, 5.0f, 0.0f), 1.0f, 0.1f, glm::vec4(1.0f, 0.3f, 0.0f, 0.8f));
-  scene.addParticle(glm::vec3(-0.5f, 4.0f, 0.0f), 1.0f, 0.1f, glm::vec4(0.2f, 1.0f, 0.3f, 0.8f));
+  // scene.addParticle(glm::vec3(0.0f, 3.0f, 0.0f), 1.0f, 0.1f, glm::vec4(0.0f, 0.5f, 1.0f, 0.8f));
+  // scene.addParticle(glm::vec3(0.5f, 5.0f, 0.0f), 1.0f, 0.1f, glm::vec4(1.0f, 0.3f, 0.0f, 0.8f));
+  // scene.addParticle(glm::vec3(-0.5f, 4.0f, 0.0f), 1.0f, 0.1f, glm::vec4(0.2f, 1.0f, 0.3f, 0.8f));
 
   // std::vector<Particle> p;
   // for (int i = 0; i < 20; i++) {
