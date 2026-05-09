@@ -25,10 +25,12 @@ struct Solver {
     float scorr_wdq;
     int scorr_n;
 
+    float xsph_c; // XSPH viscosity coefficient, eq. 17, tune in [0,1]
+
     Solver(float h = 1.0f, float gravity = 9.8f, float rho0 = 100.0f, float epsilon = 100.0f, 
-        int iterations = 3, float scorr_k = 0.0002f, float scorr_dq = 0.1f, int scorr_n = 4)
+        int iterations = 3, float scorr_k = 0.0002f, float scorr_dq = 0.1f, int scorr_n = 4, float xsph_c = 0.005f)
         : h(h), gravity(gravity), rho0(rho0), epsilon(epsilon), iterations(iterations), 
-        scorr_k(scorr_k), scorr_dq(scorr_dq), scorr_n(scorr_n), grid(h) {
+        scorr_k(scorr_k), scorr_dq(scorr_dq), scorr_n(scorr_n), grid(h), xsph_c(xsph_c) {
         float h6 = h*h*h*h*h*h;
         float h9 = h6*h*h*h;
         poly6_coeff = 315.0f/(64.0f*M_PI*h9);
@@ -52,6 +54,7 @@ struct Solver {
             applyBoundaryConditions(particles);
         }
         updateVelocities(particles,dt);
+        applyViscosity(particles, neighborList);
     }
 
 private:
@@ -163,6 +166,24 @@ private:
     //     for (auto& p : particles)
     //         p.velocity *= damping;
     // }
+    
+    void applyViscosity(std::vector<Particle>& particles, const std::vector<std::vector<int>>& neighborList) {
+        std::vector<glm::vec3> deltas(particles.size(), glm::vec3(0.0f));
+
+        for (int i = 0; i < (int)particles.size(); i++) {
+            Particle& p_i = particles[i];
+            for (int j : neighborList[i]) {
+                if (i == j) continue;
+                float r = glm::length(p_i.position - particles[j].position);
+                glm::vec3 v_ij = particles[j].velocity - p_i.velocity;
+                deltas[i] += v_ij * poly6(r, h, poly6_coeff);
+            }
+            deltas[i] *= xsph_c;
+        }
+
+        for (int i = 0; i < (int)particles.size(); i++)
+            particles[i].velocity += deltas[i];
+    }
 };
 
 #endif
