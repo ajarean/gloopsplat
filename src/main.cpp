@@ -96,6 +96,7 @@ int main() {
     float currentFrame = static_cast<float>(glfwGetTime());
     deltaTime = currentFrame - lastFrame;
     deltaTime = glm::min(deltaTime, 0.016f); //cap to 60fps
+    // deltaTime = glm::min(deltaTime, 0.0016f);
     lastFrame = currentFrame;
     processInput(window);
 
