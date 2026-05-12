@@ -40,7 +40,7 @@ float deltaTime = 0.0f;
 float lastFrame = 0.0f;
 
 // config
-bool isPaused = true;
+bool isPaused = false;
 
 void framebuffer_size_callback(GLFWwindow* window, int _width, int _height);
 void mouse_callback(GLFWwindow* window, double xposIn, double yposIn);
@@ -88,15 +88,13 @@ int main() {
   Shader shader("./shaders/splat.vs", "./shaders/splat.fs");
   SplatRenderer renderer;
 
-  Scene scene(0.4f, 9.8f, 65.0f, 200.0f);
-  scene.addBlock(glm::vec3(-0.75f, 0.5f, -0.75f), 7, 7, 7, 0.3f, 1.0f, 0.1f, glm::vec3(0.0f, 0.5f, 1.0f), 1.0f);
-  // scene.addBlock(glm::vec3(-1.0f, 0.5f, -1.0f), 5, 5, 5, 0.2f, 1.0f, 0.1f, glm::vec3(0.0f, 0.5f, 1.0f), 1.0f);
+  Scene scene(0.4f, 9.8f, 68.0f, 100.0f);
+  scene.addBlock(glm::vec3(-0.75f, 0.5f, -0.75f), 7, 7, 7, 0.3f, 1.0f, 0.15f, glm::vec4(0.0f, 0.5f, 1.0f, 0.6f));
 
   while (!glfwWindowShouldClose(window)) {
     float currentFrame = static_cast<float>(glfwGetTime());
     deltaTime = currentFrame - lastFrame;
     deltaTime = glm::min(deltaTime, 0.016f); //cap to 60fps
-    // deltaTime = glm::min(deltaTime, 0.0016f);
     lastFrame = currentFrame;
     processInput(window);
 
@@ -128,6 +126,9 @@ int main() {
     float tanHalfFovy = tan(radians(camera.Zoom) * 0.5f);
     vec2 focal = vec2((0.5f * (float)width) / tanHalfFovy, (0.5f * (float)height) / tanHalfFovy);
 
+    shader.use();
+    shader.setVec3("lightDir", glm::normalize(glm::vec3(1.0f, 1.0f, 1.0f)));
+    shader.setFloat("blur", 0.8);
     renderer.draw(shader, scene.particles, projection, modelView, focal, viewport);
 
     ImGui::Render();
