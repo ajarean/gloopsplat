@@ -89,7 +89,8 @@ int main() {
   SplatRenderer renderer;
 
   Scene scene(0.4f, 9.8f, 68.0f, 100.0f);
-  scene.addBlock(glm::vec3(-0.75f, 0.5f, -0.75f), 7, 7, 7, 0.3f, 1.0f, 0.15f, glm::vec4(0.0f, 0.5f, 1.0f, 0.6f));
+  Block block;
+  scene.addBlock(block);
 
   while (!glfwWindowShouldClose(window)) {
     float currentFrame = static_cast<float>(glfwGetTime());
@@ -102,14 +103,23 @@ int main() {
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
 
-    ImGui::SetNextWindowPos(ImVec2(2.0f, 2.0f), ImGuiCond_Once, ImVec2(0.0f, 0.0f));
-    ImGui::Begin("Simulation Controls", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
-    ImGui::Checkbox("Paused [space]", &isPaused);
-    ImGui::End();
-
     ImGui::SetNextWindowPos(ImVec2(width - 2.0f, 2.0f), ImGuiCond_Always, ImVec2(1.0f, 0.0f));
     ImGui::Begin("Stats", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoDecoration);
     ImGui::Text("FPS: %.1f", io.Framerate);
+    ImGui::End();
+
+    ImGui::SetNextWindowPos(ImVec2(2.0f, 50.0f), ImGuiCond_Once);
+    ImGui::Begin("Scene", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
+    ImGui::SliderInt("Nx", &block.nx, 1, 20);
+    ImGui::SliderInt("Ny", &block.ny, 1, 20);
+    ImGui::SliderInt("Nz", &block.nz, 1, 20);
+    ImGui::SliderFloat("Spacing", &block.spacing, 0.05f, 0.5f, "%.3f");
+    ImGui::SliderFloat("Radius",  &block.radius,  0.05f, 0.5f, "%.3f");
+    if (ImGui::Button("Reload")) {
+      scene.particles.clear();
+      scene.addBlock(block);
+    }
+    ImGui::Checkbox("Paused [space]", &isPaused);
     ImGui::End();
 
     glClearColor(0.5f, 0.5f, 0.5f, 1.0f);

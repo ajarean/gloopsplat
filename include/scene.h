@@ -5,6 +5,17 @@
 #include "particle.h"
 #include "solver.h"
 
+struct Block {
+    glm::vec3 origin = glm::vec3(-0.75f, 0.5f, -0.75f);
+    int nx = 7;
+    int ny = 7;
+    int nz = 7;
+    float spacing = 0.3f;
+    float mass = 1.0f;
+    float radius = 0.15f;
+    glm::vec4 color = glm::vec4(0.0f, 0.5f, 1.0f, 0.6f);
+};
+
 struct Scene {
     std::vector<Particle> particles;
     Solver solver;
@@ -31,6 +42,9 @@ struct Scene {
             glm::vec3 pos = origin + glm::vec3(x, y, z) * spacing;
             addParticle(pos, mass, radius, color);
         }
+    }
+    void addBlock(Block block) {
+        addBlock(block.origin, block.nx, block.ny, block.nz, block.spacing, block.mass, block.radius, block.color);
     }
 };
 
