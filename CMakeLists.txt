@@ -20,6 +20,7 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(glm)
 
 find_package(OpenGL REQUIRED)
+find_package(OpenMP)
 
 file(GLOB IMGUI_SOURCES src/imgui/*.cpp)
 
@@ -34,6 +35,7 @@ add_executable(gloopsplat
 target_include_directories(gloopsplat PUBLIC include include/imgui)
 
 target_link_libraries(gloopsplat PRIVATE glfw glm::glm OpenGL::GL)
+target_link_libraries(gloopsplat PRIVATE OpenMP::OpenMP_CXX)
 
 add_custom_command(TARGET gloopsplat POST_BUILD
   COMMAND ${CMAKE_COMMAND} -E copy_directory
