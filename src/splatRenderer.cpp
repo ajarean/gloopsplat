@@ -47,8 +47,8 @@ SplatRenderer::SplatRenderer() {
   glEnableVertexAttribArray(4);
   glVertexAttribDivisor(4, 1);
 
-  // speed (float)
-  glVertexAttribPointer(5, 1, GL_FLOAT, GL_FALSE, sizeof(SplatData), (void*)offsetof(SplatData, speed));
+  // surface weight (float)
+  glVertexAttribPointer(5, 1, GL_FLOAT, GL_FALSE, sizeof(SplatData), (void*)offsetof(SplatData, surface));
   glEnableVertexAttribArray(5);
   glVertexAttribDivisor(5, 1);
   glBindVertexArray(0);
@@ -90,7 +90,7 @@ void SplatRenderer::updateBuffers(const std::vector<Particle> particles) {
     splatBuffer[i].radius = p.radius;
     splatBuffer[i].color = p.color;
     splatBuffer[i].normal = p.normal;
-    splatBuffer[i].speed = glm::length(p.velocity);
+    splatBuffer[i].surface = p.surface;
   }
   glBindBuffer(GL_ARRAY_BUFFER, splatVBO);
   glBufferData(GL_ARRAY_BUFFER, splatBuffer.size() * sizeof(SplatData), splatBuffer.data(), GL_DYNAMIC_DRAW);

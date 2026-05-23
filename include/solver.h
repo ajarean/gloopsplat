@@ -15,6 +15,7 @@ struct Solver {
     float epsilon;
     int iterations;
     Grid grid;
+    int surfaceThreshold = 20; // max number of neighbors to count as surface
 
     float poly6_coeff; // 315/(64pi*h^9)
     float spiky_coeff; // -45/(pi*h^6)
@@ -43,8 +44,13 @@ struct Solver {
         applyForcesAndPredict(particles,dt);
         grid.build(particles);
         std::vector<std::vector<int>> neighborList(particles.size());
-        for(int i = 0; i < (int)particles.size(); i++){
+        for(int i = 0; i < particles.size(); i++) {
             neighborList[i] = grid.neighbors(particles[i].predicted, particles);
+        }
+        // detect surfaces
+        for (int i = 0; i < particles.size(); i++) {
+            // interpolate closer to 1 if less neighbors (more surface weight)
+            particles[i].surface = glm::mix(particles[i].surface, neighborList[i].size() < surfaceThreshold ? 1.0f : 0.0f, 0.05f);
         }
         for(int i=0; i<iterations; i++){
             calculateLambda(particles, neighborList);
@@ -175,6 +181,7 @@ private:
         float epsilon = 1e-6;
         for(int i = 0; i < particles.size(); i++){
             Particle& p_i = particles[i];
+            if (p_i.surface < 0.5) continue;
             glm::vec3 grad(0.0f);
             for(int j : neighborList[i]){
                 if(i==j) continue;
