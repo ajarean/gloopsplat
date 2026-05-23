@@ -41,6 +41,7 @@ float lastFrame = 0.0f;
 
 // config
 bool isPaused = false;
+bool shouldReload = false;
 
 void framebuffer_size_callback(GLFWwindow* window, int _width, int _height);
 void mouse_callback(GLFWwindow* window, double xposIn, double yposIn);
@@ -92,6 +93,10 @@ int main() {
   Block block;
   scene.addBlock(block);
 
+  float specular  = 0.5f;
+  float roughness = 0.1f;
+  float blur = 0.8f;
+
   while (!glfwWindowShouldClose(window)) {
     float currentFrame = static_cast<float>(glfwGetTime());
     deltaTime = currentFrame - lastFrame;
@@ -108,18 +113,32 @@ int main() {
     ImGui::Text("FPS: %.1f", io.Framerate);
     ImGui::End();
 
-    ImGui::SetNextWindowPos(ImVec2(2.0f, 50.0f), ImGuiCond_Once);
-    ImGui::Begin("Scene", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
-    ImGui::SliderInt("Nx", &block.nx, 1, 20);
-    ImGui::SliderInt("Ny", &block.ny, 1, 20);
-    ImGui::SliderInt("Nz", &block.nz, 1, 20);
-    ImGui::SliderFloat("Spacing", &block.spacing, 0.05f, 0.5f, "%.3f");
-    ImGui::SliderFloat("Radius",  &block.radius,  0.05f, 0.5f, "%.3f");
-    if (ImGui::Button("Reload")) {
-      scene.particles.clear();
-      scene.addBlock(block);
+    ImGui::SetNextWindowPos(ImVec2(2.0f, 50.0f), ImGuiCond_Once, ImVec2(0.0f, 0.0f));
+    ImGui::Begin("Config", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
+    if (ImGui::CollapsingHeader("Scene (requires reload)", ImGuiTreeNodeFlags_DefaultOpen)) {
+      ImGui::SliderInt("Nx", &block.nx, 1, 20);
+      ImGui::SliderInt("Ny", &block.ny, 1, 20);
+      ImGui::SliderInt("Nz", &block.nz, 1, 20);
+      ImGui::SliderFloat("Spacing", &block.spacing, 0.05f, 0.5f, "%.3f");
+      ImGui::SliderFloat("Radius",  &block.radius,  0.05f, 0.5f, "%.3f");
+      if (ImGui::CollapsingHeader("Color")) {
+        ImGui::ColorPicker3("Color", &block.color[0]);
+      }
+      ImGui::SliderFloat("Opacity", &block.color[3], 0.01, 1);
+      if (ImGui::Button("Reload [R]") || shouldReload) {
+        scene.particles.clear();
+        scene.addBlock(block);
+        shouldReload = false;
+      }
     }
+    if (ImGui::CollapsingHeader("Shading", ImGuiTreeNodeFlags_DefaultOpen)) {
+      ImGui::SliderFloat("Specular",  &specular,  0.0f, 1.0f, "%.3f");
+      ImGui::SliderFloat("Roughness", &roughness, 0.01f, 1.0f, "%.3f");
+      ImGui::SliderFloat("Blur", &blur, 0.0f, 1.0f, "%.3f");
+    }
+
     ImGui::Checkbox("Paused [space]", &isPaused);
+
     ImGui::End();
 
     glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
@@ -138,7 +157,9 @@ int main() {
 
     shader.use();
     shader.setVec3("lightDir", glm::normalize(glm::vec3(1.0f, 1.0f, 1.0f)));
-    shader.setFloat("blur", 0.8);
+    shader.setFloat("blur", blur);
+    shader.setFloat("specular",  specular);
+    shader.setFloat("roughness", roughness);
     renderer.draw(shader, scene.particles, projection, modelView, focal, viewport);
 
     ImGui::Render();
@@ -176,6 +197,8 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
   if (action != GLFW_PRESS) return;
   if (key == GLFW_KEY_SPACE)
     isPaused = !isPaused;
+  if (key == GLFW_KEY_R)
+    shouldReload = true;
 }
 
 void framebuffer_size_callback(GLFWwindow* window, int _width, int _height) {

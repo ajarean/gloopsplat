@@ -73,8 +73,6 @@ void SplatRenderer::depthSort(const std::vector<Particle>& particles, const glm:
   indices.resize(particles.size());
   for (int i = 0; i < particles.size(); i++) {
     indices[i] = i;
-    // float z = (modelView * glm::vec4(particles[i].position, 1.0f)).z;
-    // std::cout << "particle " << i << " z: " << z << std::endl;
   }
 
   std::sort(indices.begin(), indices.end(), [&](int a, int b) {

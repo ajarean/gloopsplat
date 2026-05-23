@@ -7,15 +7,13 @@ in float vDepth;
 
 uniform vec3 lightDir;
 uniform float blur;
+uniform float specular;
+uniform float roughness;
 
 out vec4 fragColor;
 
 void main()
 {
-  // TODO: make these configurable through imGui
-  float specular = 0.4;
-  float roughness = 0.3;
-
   // see Botsch et al
   float r = dot(fragPos, fragPos);
   if (r > 1.0) discard;
