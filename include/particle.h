@@ -30,4 +30,12 @@ struct Particle {
       lambda(0.0f), radius(radius), color(color), normal(0.0f, 1.0f, 0.0f) {}
 };
 
+struct SplatData {
+  glm::vec3 position;
+  float radius;
+  glm::vec4 color;
+  glm::vec3 normal;
+  float speed;
+};
+
 #endif
