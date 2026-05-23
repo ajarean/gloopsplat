@@ -76,6 +76,7 @@ private:
     }
 
     void calculateLambda(std::vector<Particle>& particles, const std::vector<std::vector<int>>& neighborList){
+        #pragma omp parallel for schedule(dynamic)
         for(int i = 0; i<particles.size(); i++){
             Particle& p_i = particles[i];
             // auto neighbors = grid.neighbors(p_i.predicted, particles);
@@ -116,6 +117,7 @@ private:
     void updatePositions(std::vector<Particle>& particles, const std::vector<std::vector<int>>& neighborList){
         // algo 1 line 13
         std::vector<glm::vec3> deltas(particles.size(), glm::vec3(0.0f));
+        #pragma omp parallel for schedule(dynamic)
         for(int i = 0; i<particles.size(); i++){
             // deltas[i] = glm::vec3(0,0,0);
             Particle& p_i = particles[i];
