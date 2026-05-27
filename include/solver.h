@@ -18,6 +18,10 @@ struct Solver {
     Grid grid;
     int surfaceThreshold = 20; // max number of neighbors to count as surface
 
+    float floor_y = 0.0f;
+    float wall_x = 1.5f;
+    float wall_z = 1.5f;
+
     float poly6_coeff; // 315/(64pi*h^9)
     float spiky_coeff; // -45/(pi*h^6)
     
@@ -33,12 +37,16 @@ struct Solver {
         int iterations = 3, float scorr_k = 0.0002f, float scorr_dq = 0.1f, int scorr_n = 4, float xsph_c = 0.005f)
         : h(h), gravity(gravity), rho0(rho0), epsilon(epsilon), iterations(iterations), 
         scorr_k(scorr_k), scorr_dq(scorr_dq), scorr_n(scorr_n), grid(h), xsph_c(xsph_c) {
+        computeKernels();
+    }
+
+    void computeKernels() {
         float h6 = h*h*h*h*h*h;
         float h9 = h6*h*h*h;
         poly6_coeff = 315.0f/(64.0f*M_PI*h9);
         spiky_coeff = -45.0f/(M_PI*h6);
-
         scorr_wdq = poly6(scorr_dq*h, h, poly6_coeff);
+        grid.h = h;
     }
 
     void update(std::vector<Particle>& particles, std::vector<Collider*>& colliders, float dt){
@@ -146,10 +154,6 @@ private:
     // algo 1 line 14
     void applyBoundaryConditions(std::vector<Particle>& particles) {
         // axis aligned box for now; can replace with something more complex if needed
-        const float floor_y  =  0.0f;
-        const float wall_x   =  2.0f;
-        const float wall_z   =  1.5f;
-
         for (auto& p : particles) {
             if (p.predicted.y < floor_y + p.radius) {
                 p.predicted.y = floor_y + p.radius;

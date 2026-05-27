@@ -116,28 +116,62 @@ int main() {
 
     ImGui::SetNextWindowPos(ImVec2(2.0f, 50.0f), ImGuiCond_Once, ImVec2(0.0f, 0.0f));
     ImGui::Begin("Config", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
-    if (ImGui::CollapsingHeader("Scene (requires reload)", ImGuiTreeNodeFlags_DefaultOpen)) {
-      ImGui::SliderInt("Nx", &block.nx, 1, 20);
-      ImGui::SliderInt("Ny", &block.ny, 1, 20);
-      ImGui::SliderInt("Nz", &block.nz, 1, 20);
-      ImGui::SliderFloat("Spacing", &block.spacing, 0.05f, 0.5f, "%.3f");
-      ImGui::SliderFloat("Radius",  &block.radius,  0.05f, 0.5f, "%.3f");
-      if (ImGui::CollapsingHeader("Color")) {
+
+    if (ImGui::BeginTabBar("Config")) {
+      if (ImGui::BeginTabItem("Scene")) {
+        ImGui::SliderInt("Nx", &block.nx, 1, 20);
+        ImGui::SliderInt("Ny", &block.ny, 1, 20);
+        ImGui::SliderInt("Nz", &block.nz, 1, 20);
+        ImGui::SliderFloat("Spacing", &block.spacing, 0.05f, 0.5f, "%.3f");
+        ImGui::SliderFloat("Radius",  &block.radius,  0.05f, 0.5f, "%.3f");
+        ImGui::EndTabItem();
+      }
+
+      if (ImGui::BeginTabItem("Shading")) {
         ImGui::ColorPicker3("Color", &block.color[0]);
+        ImGui::SliderFloat("Opacity", &block.color[3], 0.01f, 1.0f);
+        ImGui::SliderFloat("Specular",  &specular,  0.0f, 1.0f, "%.3f");
+        ImGui::SliderFloat("Roughness", &roughness, 0.01f, 1.0f, "%.3f");
+        ImGui::SliderFloat("Blur", &blur, 0.0f, 1.0f, "%.3f");
+        ImGui::EndTabItem();
       }
-      ImGui::SliderFloat("Opacity", &block.color[3], 0.01, 1);
-      if (ImGui::Button("Reload [R]") || shouldReload) {
-        scene.particles.clear();
-        scene.addBlock(block);
-        shouldReload = false;
+
+      if (ImGui::BeginTabItem("Solver")) {
+        bool reloadKernels = false;
+        reloadKernels |= ImGui::SliderFloat("h", &scene.solver.h, 0.1f, 1.0f, "%.3f");
+        ImGui::SliderFloat("Gravity", &scene.solver.gravity, 0.0f, 20.0f, "%.3f");
+        ImGui::SliderFloat("rho0", &scene.solver.rho0, 1.0f, 200.0f, "%.3f");
+        ImGui::SliderFloat("Epsilon", &scene.solver.epsilon, 1.0f, 1000.0f, "%.3f");
+        ImGui::SliderInt("Iterations", &scene.solver.iterations, 1, 10);
+
+        ImGui::Text("TODO:s_corr");
+        // TODO: andy add stuff for this + xsph stuff cuz idk what the params do
+
+
+        ImGui::SliderInt("Surface threshold", &scene.solver.surfaceThreshold, 1, 100);
+
+        if (reloadKernels) { scene.solver.computeKernels(); }
+        ImGui::EndTabItem();
       }
-    }
-    if (ImGui::CollapsingHeader("Shading", ImGuiTreeNodeFlags_DefaultOpen)) {
-      ImGui::SliderFloat("Specular",  &specular,  0.0f, 1.0f, "%.3f");
-      ImGui::SliderFloat("Roughness", &roughness, 0.01f, 1.0f, "%.3f");
-      ImGui::SliderFloat("Blur", &blur, 0.0f, 1.0f, "%.3f");
+
+      if (ImGui::BeginTabItem("Colliders")) {
+        ImGui::SliderFloat("Floor Y", &scene.solver.floor_y, -2.0f, 2.0f, "%.3f");
+        ImGui::SliderFloat("Wall X", &scene.solver.wall_x, 0.5f, 5.0f, "%.3f");
+        ImGui::SliderFloat("Wall Z", &scene.solver.wall_z, 0.5f, 5.0f, "%.3f");
+        ImGui::EndTabItem();
+      }
+
+      ImGui::EndTabBar();
     }
 
+    if (ImGui::Button("Reload [R]") || shouldReload) {
+      scene.particles.clear();
+      scene.clearColliders();
+      scene.addSphereCollider(glm::vec3(0.0f, 2.0f, 0.0f), 1.0f);
+      scene.addBlock(block);
+      shouldReload = false;
+    }
+    ImGui::SameLine();
     ImGui::Checkbox("Paused [space]", &isPaused);
 
     ImGui::End();
