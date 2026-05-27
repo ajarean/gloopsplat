@@ -50,6 +50,7 @@ struct Solver {
         }
         // detect surfaces
         for (int i = 0; i < particles.size(); i++) {
+            int neighborCount = neighborList[i].size();
             // interpolate closer to 1 if less neighbors (more surface weight)
             particles[i].surface = glm::mix(particles[i].surface, neighborList[i].size() < surfaceThreshold ? 1.0f : 0.0f, 0.05f);
         }
@@ -189,15 +190,29 @@ private:
     // eq 8
     void computeNormals(std::vector<Particle>& particles, const std::vector<std::vector<int>>& neighborList){
         for(int i = 0; i < particles.size(); i++){
-            Particle& p_i = particles[i];
-            if (p_i.surface < 0.5) continue;
             glm::vec3 grad(0.0f);
             for(int j : neighborList[i]){
-                if(i==j) continue;
-                grad += spiky_grad(p_i.position - particles[j].position, h, spiky_coeff);
+                if (i == j) continue;
+                grad += spiky_grad(particles[i].position - particles[j].position, h, spiky_coeff);
             }
-            float len = glm::length(grad);
-            p_i.normal = len > 1e-6 ? -grad / len : glm::vec3(0.0f, 1.0f, 0.0f);
+            particles[i].normal = grad;
+        }
+
+        // avg w neighbors
+        for(int i = 0; i < particles.size(); i++){
+            if (particles[i].surface < 0.5f) {
+                particles[i].normal = glm::vec3(0.0f, 1.0f, 0.0f);
+                continue;
+            }
+            glm::vec3 smoothed(0.0f);
+            for(int j : neighborList[i]){
+                if (i == j) continue;
+                float dist = glm::length(particles[i].position - particles[j].position);
+                float w_ij = poly6(dist, h, poly6_coeff);
+                smoothed += w_ij * particles[j].normal;
+            }
+            float len = glm::length(smoothed);
+            particles[i].normal = len > 1e-6 ? -smoothed / len : glm::vec3(0.0f, 1.0f, 0.0f);
         }
     }
 };

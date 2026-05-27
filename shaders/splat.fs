@@ -21,14 +21,14 @@ void main()
 
   float diff = max(dot(normalize(vNormal), normalize(lightDir)), 0.0);
   // float spec = vSurface * min(pow(diff, 1.0 / roughness), 0.3);
-  float spec = vSurface > 0.3 ? min(pow(diff, 1.0 / roughness), 0.3) : 0;
+  float spec = min(pow(diff, 1.0 / roughness), 0.3);
 
   // TODO: get thickness
   // cp(ri) = dp + sp ⊙ Ls(ri, np, ρp)
   vec3 c = vColor.rgb * (0.6 + 0.4*diff) + specular * vec3(spec);
 
   // vec3 depthColor = vColor.rgb * (1.0 / (1.0 + vDepth * 0.12));
-  // float depthOpacity = vColor.a * (1.0 / (1.0 + vDepth * 0.1));
-  float rho = exp(-r * blur) * vColor.a;
+  float depthOpacity = vColor.a * (1.0 / (1.0 + vDepth * 0.1));
+  float rho = exp(-r * blur) * depthOpacity;
   fragColor = vec4(rho * c, rho);
 }
