@@ -1,12 +1,10 @@
 #ifndef SCENE_H
 #define SCENE_H
 
-#include <vector>
-#include "particle.h"
 #include "solver.h"
 
 struct Block {
-    glm::vec3 origin = glm::vec3(-0.75f, 0.5f, -0.75f);
+    glm::vec3 origin = glm::vec3(-0.75f, 2.0f, -0.75f);
     int nx = 7;
     int ny = 7;
     int nz = 7;
@@ -18,6 +16,7 @@ struct Block {
 
 struct Scene {
     std::vector<Particle> particles;
+    std::vector<Collider*> colliders;
     Solver solver;
 
     Scene(float h = 0.3f, float gravity = 9.8f, float rho0 = 100.0f, float epsilon = 100.0f) 
@@ -32,7 +31,7 @@ struct Scene {
     }
 
     void update(float dt) {
-        solver.update(particles, dt);
+        solver.update(particles, colliders, dt);
     }
     void addBlock(glm::vec3 origin, int nx, int ny, int nz, float spacing,
                 float mass, float radius, glm::vec4 color) {
@@ -45,6 +44,14 @@ struct Scene {
     }
     void addBlock(Block block) {
         addBlock(block.origin, block.nx, block.ny, block.nz, block.spacing, block.mass, block.radius, block.color);
+    }
+
+    void addSphereCollider(glm::vec3 center, float radius) {
+        colliders.push_back(new SphereCollider(center, radius));
+    }
+
+    ~Scene() {
+        for (auto* c : colliders) delete c;
     }
 };
 

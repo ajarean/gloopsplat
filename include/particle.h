@@ -24,6 +24,7 @@ struct Particle {
   float radius;
   glm::vec4 color;
   glm::vec3 normal;
+  float surface = 0.0f; // weighted surface-ness of a particle
 
   Particle(glm::vec3 position, float mass, float radius, glm::vec4 color)
     : position(position), velocity(0.0f), predicted(0.0f), mass(mass),
@@ -35,7 +36,7 @@ struct SplatData {
   float radius;
   glm::vec4 color;
   glm::vec3 normal;
-  float speed;
+  float surface;
 };
 
 #endif

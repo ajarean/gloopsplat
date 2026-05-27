@@ -5,7 +5,7 @@ layout (location = 1) in vec3 position;
 layout (location = 2) in float radius;
 layout (location = 3) in vec4 color;
 layout (location = 4) in vec3 normal;
-layout (location = 5) in float speed;
+layout (location = 5) in float surface;
 
 uniform mat4 projection;
 uniform mat4 modelView;
@@ -16,6 +16,7 @@ out vec4 vColor;
 out vec3 vNormal;
 out vec2 fragPos;
 out float vDepth;
+out float vSurface;
 
 void main()
 {

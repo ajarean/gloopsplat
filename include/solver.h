@@ -7,6 +7,7 @@
 #include "particle.h"
 #include "grid.h"
 #include "kernel.h"
+#include "collider.h"
 
 struct Solver {
     float h;
@@ -15,6 +16,7 @@ struct Solver {
     float epsilon;
     int iterations;
     Grid grid;
+    int surfaceThreshold = 20; // max number of neighbors to count as surface
 
     float poly6_coeff; // 315/(64pi*h^9)
     float spiky_coeff; // -45/(pi*h^6)
@@ -39,17 +41,23 @@ struct Solver {
         scorr_wdq = poly6(scorr_dq*h, h, poly6_coeff);
     }
 
-    void update(std::vector<Particle>& particles, float dt){
+    void update(std::vector<Particle>& particles, std::vector<Collider*>& colliders, float dt){
         applyForcesAndPredict(particles,dt);
         grid.build(particles);
         std::vector<std::vector<int>> neighborList(particles.size());
-        for(int i = 0; i < (int)particles.size(); i++){
+        for(int i = 0; i < particles.size(); i++) {
             neighborList[i] = grid.neighbors(particles[i].predicted, particles);
+        }
+        // detect surfaces
+        for (int i = 0; i < particles.size(); i++) {
+            // interpolate closer to 1 if less neighbors (more surface weight)
+            particles[i].surface = glm::mix(particles[i].surface, neighborList[i].size() < surfaceThreshold ? 1.0f : 0.0f, 0.05f);
         }
         for(int i=0; i<iterations; i++){
             calculateLambda(particles, neighborList);
             updatePositions(particles, neighborList);
             applyBoundaryConditions(particles);
+            applyCollisions(particles, colliders);
         }
         computeNormals(particles, neighborList);
         updateVelocities(particles,dt);
@@ -138,7 +146,7 @@ private:
     void applyBoundaryConditions(std::vector<Particle>& particles) {
         // axis aligned box for now; can replace with something more complex if needed
         const float floor_y  =  0.0f;
-        const float wall_x   =  1.5f;
+        const float wall_x   =  2.0f;
         const float wall_z   =  1.5f;
 
         for (auto& p : particles) {
@@ -151,7 +159,15 @@ private:
             if (p.predicted.z >  wall_z - p.radius) p.predicted.z =  wall_z - p.radius;
         }
     }
-    
+
+    void applyCollisions(std::vector<Particle>& particles, std::vector<Collider*>& colliders) {
+        for (auto& p : particles) {
+            for (auto& c : colliders) {
+                c->resolveCollision(p);
+            }
+        }
+    }
+
     void applyViscosity(std::vector<Particle>& particles, const std::vector<std::vector<int>>& neighborList) {
         std::vector<glm::vec3> deltas(particles.size(), glm::vec3(0.0f));
 
@@ -172,16 +188,16 @@ private:
 
     // eq 8
     void computeNormals(std::vector<Particle>& particles, const std::vector<std::vector<int>>& neighborList){
-        float epsilon = 1e-6;
         for(int i = 0; i < particles.size(); i++){
             Particle& p_i = particles[i];
+            if (p_i.surface < 0.5) continue;
             glm::vec3 grad(0.0f);
             for(int j : neighborList[i]){
                 if(i==j) continue;
                 grad += spiky_grad(p_i.position - particles[j].position, h, spiky_coeff);
             }
             float len = glm::length(grad);
-            p_i.normal = len > epsilon ? -grad / len : glm::vec3(0.0f, 1.0f, 0.0f);
+            p_i.normal = len > 1e-6 ? -grad / len : glm::vec3(0.0f, 1.0f, 0.0f);
         }
     }
 };

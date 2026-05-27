@@ -90,6 +90,7 @@ int main() {
   SplatRenderer renderer;
 
   Scene scene(0.4f, 9.8f, 68.0f, 100.0f);
+  scene.addSphereCollider(glm::vec3(0.0f, 2.0f, 0.0f), 1.0f);
   Block block;
   scene.addBlock(block);
 
