@@ -52,9 +52,12 @@ SplatRenderer::SplatRenderer() {
   glEnableVertexAttribArray(5);
   glVertexAttribDivisor(5, 1);
   glBindVertexArray(0);
+
+  glBindBuffer(GL_ARRAY_BUFFER, splatVBO);
+  glBufferData(GL_ARRAY_BUFFER, 100000 * sizeof(SplatData), nullptr, GL_DYNAMIC_DRAW);
 }
 
-void SplatRenderer::draw(Shader &shader, std::vector<Particle> particles, glm::mat4 &projection,
+void SplatRenderer::draw(Shader &shader, std::vector<Particle> &particles, glm::mat4 &projection,
     glm::mat4 &modelView, glm::vec2 &focal, glm::vec2 &viewport) {
   depthSort(particles, modelView);
   updateBuffers(particles);
@@ -82,7 +85,7 @@ void SplatRenderer::depthSort(const std::vector<Particle>& particles, const glm:
   });
 }
 
-void SplatRenderer::updateBuffers(const std::vector<Particle> particles) {
+void SplatRenderer::updateBuffers(const std::vector<Particle>& particles) {
   splatBuffer.resize(particles.size());
   for (int i = 0; i < splatBuffer.size(); i++) {
     const Particle& p = particles[indices[i]];
@@ -93,7 +96,7 @@ void SplatRenderer::updateBuffers(const std::vector<Particle> particles) {
     splatBuffer[i].surface = p.surface;
   }
   glBindBuffer(GL_ARRAY_BUFFER, splatVBO);
-  glBufferData(GL_ARRAY_BUFFER, splatBuffer.size() * sizeof(SplatData), splatBuffer.data(), GL_DYNAMIC_DRAW);
+  glBufferSubData(GL_ARRAY_BUFFER, 0, splatBuffer.size() * sizeof(SplatData), splatBuffer.data());
 }
 
 SplatRenderer::~SplatRenderer() {
