@@ -15,7 +15,11 @@ struct Grid {
     const int P2 = 19349663;
     const int P3 = 83492791;
 
-    std::unordered_map<int, std::vector<int>> cells;
+    // std::unordered_map<int, std::vector<int>> cells;
+    int tableSize;
+    std::vector<int> cellCount; // particles per cell
+    std::vector<int> cellStart; // start index of cell in flat
+    std::vector<int> flat; // particle indices grouped by cell
 
     Grid(float h){
         this->h = h;
@@ -30,17 +34,33 @@ struct Grid {
     }
 
     int hash(glm::ivec3 c) const {
-        return (c.x*P1)^(c.y*P2)^(c.z*P3); 
-        //no need to mod n because unordered map does that already
+        return std::abs((c.x*P1)^(c.y*P2)^(c.z*P3)) % tableSize; 
     }
     
     void build(const std::vector<Particle>& particles) {
-        cells.clear();
-        for (int i = 0; i < (int)particles.size(); i++) {
-            // macklin and muller 2013 algo 1: 
-            // find neighbors based on predicted positions
-            int key = hash(cell_coords(particles[i].predicted));
-            cells[key].push_back(i);
+        int n = (int)particles.size();
+        tableSize = n; // table size = particle count, good tradeoff (Teschner)
+
+        cellCount.assign(tableSize, 0);
+        cellStart.resize(tableSize);
+        flat.resize(n);
+
+        // pass 1: count particles per cell
+        // macklin and muller 2013 algo 1: 
+        // find neighbors based on predicted positions
+        for (int i = 0; i < n; i++)
+            cellCount[hash(cell_coords(particles[i].predicted))]++;
+
+        // prefix sum to get start indices
+        cellStart[0] = 0;
+        for (int i = 1; i < tableSize; i++)
+            cellStart[i] = cellStart[i-1] + cellCount[i-1];
+
+        // pass 2: fill flat array
+        std::vector<int> insertAt = cellStart; // copy to track insertion point
+        for (int i = 0; i < n; i++) {
+            int h = hash(cell_coords(particles[i].predicted));
+            flat[insertAt[h]++] = i;
         }
     }
 
@@ -51,13 +71,13 @@ struct Grid {
         for (int dx = -1; dx <= 1; dx++){
             for (int dy = -1; dy <= 1; dy++){
                 for(int dz = -1; dz <= 1; dz++){
-                    auto i = cells.find(hash(center + glm::ivec3(dx,dy,dz)));
-                    if (i == cells.end()) continue;
-                    for(int idx : i->second){
+                    int key = hash(center + glm::ivec3(dx, dy, dz));
+                    // iterate over all particles in this cell
+                    for (int k = cellStart[key]; k < cellStart[key] + cellCount[key]; k++) {
+                        int idx = flat[k];
                         float dist = glm::length(particles[idx].predicted - pos);
-                        // first check all the neighboring cells, then make sure the particles are '
-                        // actually h distance away
-                        if(dist <= h) result.push_back(idx);
+                        if (dist <= h) result.push_back(idx);
+                        // check neighboring cells and make sure the particles are actually h distance away
                     }
                 }
             }
