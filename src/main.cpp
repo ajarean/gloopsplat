@@ -40,7 +40,8 @@ float deltaTime = 0.0f;
 float lastFrame = 0.0f;
 
 // config
-bool isPaused = true;
+bool isPaused = false;
+bool shouldReload = false;
 
 void framebuffer_size_callback(GLFWwindow* window, int _width, int _height);
 void mouse_callback(GLFWwindow* window, double xposIn, double yposIn);
@@ -88,15 +89,19 @@ int main() {
   Shader shader("./shaders/splat.vs", "./shaders/splat.fs");
   SplatRenderer renderer;
 
-  Scene scene(0.4f, 9.8f, 65.0f, 200.0f);
-  scene.addBlock(glm::vec3(-0.75f, 0.5f, -0.75f), 7, 7, 7, 0.3f, 1.0f, 0.1f, glm::vec3(0.0f, 0.5f, 1.0f), 1.0f);
-  // scene.addBlock(glm::vec3(-1.0f, 0.5f, -1.0f), 5, 5, 5, 0.2f, 1.0f, 0.1f, glm::vec3(0.0f, 0.5f, 1.0f), 1.0f);
+  Scene scene(0.4f, 9.8f, 68.0f, 100.0f);
+  scene.addSphereCollider(glm::vec3(0.0f, 2.0f, 0.0f), 1.0f);
+  Block block;
+  scene.addBlock(block);
+
+  float specular  = 0.5f;
+  float roughness = 0.1f;
+  float blur = 0.8f;
 
   while (!glfwWindowShouldClose(window)) {
     float currentFrame = static_cast<float>(glfwGetTime());
     deltaTime = currentFrame - lastFrame;
     deltaTime = glm::min(deltaTime, 0.016f); //cap to 60fps
-    // deltaTime = glm::min(deltaTime, 0.0016f);
     lastFrame = currentFrame;
     processInput(window);
 
@@ -104,14 +109,37 @@ int main() {
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
 
-    ImGui::SetNextWindowPos(ImVec2(2.0f, 2.0f), ImGuiCond_Once, ImVec2(0.0f, 0.0f));
-    ImGui::Begin("Simulation Controls", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
-    ImGui::Checkbox("Paused [space]", &isPaused);
-    ImGui::End();
-
     ImGui::SetNextWindowPos(ImVec2(width - 2.0f, 2.0f), ImGuiCond_Always, ImVec2(1.0f, 0.0f));
     ImGui::Begin("Stats", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoDecoration);
     ImGui::Text("FPS: %.1f", io.Framerate);
+    ImGui::End();
+
+    ImGui::SetNextWindowPos(ImVec2(2.0f, 50.0f), ImGuiCond_Once, ImVec2(0.0f, 0.0f));
+    ImGui::Begin("Config", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
+    if (ImGui::CollapsingHeader("Scene (requires reload)", ImGuiTreeNodeFlags_DefaultOpen)) {
+      ImGui::SliderInt("Nx", &block.nx, 1, 20);
+      ImGui::SliderInt("Ny", &block.ny, 1, 20);
+      ImGui::SliderInt("Nz", &block.nz, 1, 20);
+      ImGui::SliderFloat("Spacing", &block.spacing, 0.05f, 0.5f, "%.3f");
+      ImGui::SliderFloat("Radius",  &block.radius,  0.05f, 0.5f, "%.3f");
+      if (ImGui::CollapsingHeader("Color")) {
+        ImGui::ColorPicker3("Color", &block.color[0]);
+      }
+      ImGui::SliderFloat("Opacity", &block.color[3], 0.01, 1);
+      if (ImGui::Button("Reload [R]") || shouldReload) {
+        scene.particles.clear();
+        scene.addBlock(block);
+        shouldReload = false;
+      }
+    }
+    if (ImGui::CollapsingHeader("Shading", ImGuiTreeNodeFlags_DefaultOpen)) {
+      ImGui::SliderFloat("Specular",  &specular,  0.0f, 1.0f, "%.3f");
+      ImGui::SliderFloat("Roughness", &roughness, 0.01f, 1.0f, "%.3f");
+      ImGui::SliderFloat("Blur", &blur, 0.0f, 1.0f, "%.3f");
+    }
+
+    ImGui::Checkbox("Paused [space]", &isPaused);
+
     ImGui::End();
 
     glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
@@ -128,6 +156,11 @@ int main() {
     float tanHalfFovy = tan(radians(camera.Zoom) * 0.5f);
     vec2 focal = vec2((0.5f * (float)width) / tanHalfFovy, (0.5f * (float)height) / tanHalfFovy);
 
+    shader.use();
+    shader.setVec3("lightDir", glm::normalize(glm::vec3(1.0f, 1.0f, 1.0f)));
+    shader.setFloat("blur", blur);
+    shader.setFloat("specular",  specular);
+    shader.setFloat("roughness", roughness);
     renderer.draw(shader, scene.particles, projection, modelView, focal, viewport);
 
     ImGui::Render();
@@ -165,6 +198,8 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
   if (action != GLFW_PRESS) return;
   if (key == GLFW_KEY_SPACE)
     isPaused = !isPaused;
+  if (key == GLFW_KEY_R)
+    shouldReload = true;
 }
 
 void framebuffer_size_callback(GLFWwindow* window, int _width, int _height) {

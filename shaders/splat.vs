@@ -1,19 +1,30 @@
 #version 330 core
+
 layout (location = 0) in vec3 aPos;
+layout (location = 1) in vec3 position;
+layout (location = 2) in float radius;
+layout (location = 3) in vec4 color;
+layout (location = 4) in vec3 normal;
+layout (location = 5) in float surface;
+
 uniform mat4 projection;
 uniform mat4 modelView;
 uniform vec2 viewport;
 uniform vec2 focal;
-uniform vec3 position;
-uniform float radius;
-uniform vec4 color;
+
 out vec4 vColor;
+out vec3 vNormal;
 out vec2 fragPos;
+out float vDepth;
+out float vSurface;
+
 void main()
 {
   vColor = color;
+  vNormal = normal;
   vec4 camPos = modelView * vec4(position, 1.0);
   if (camPos.z > -0.1) return;
+  vDepth = -camPos.z;
   vec4 clipPos = projection * camPos;
 
   mat3 J = mat3(

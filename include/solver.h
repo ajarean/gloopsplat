@@ -7,6 +7,7 @@
 #include "particle.h"
 #include "grid.h"
 #include "kernel.h"
+#include "collider.h"
 
 struct Solver {
     float h;
@@ -15,6 +16,7 @@ struct Solver {
     float epsilon;
     int iterations;
     Grid grid;
+    int surfaceThreshold = 20; // max number of neighbors to count as surface
 
     float poly6_coeff; // 315/(64pi*h^9)
     float spiky_coeff; // -45/(pi*h^6)
@@ -36,23 +38,28 @@ struct Solver {
         poly6_coeff = 315.0f/(64.0f*M_PI*h9);
         spiky_coeff = -45.0f/(M_PI*h6);
 
-        scorr_wdq = poly6(scorr_dq*h, h, poly6_coeff); 
-
+        scorr_wdq = poly6(scorr_dq*h, h, poly6_coeff);
     }
-    
-    void update(std::vector<Particle>& particles, float dt){
+
+    void update(std::vector<Particle>& particles, std::vector<Collider*>& colliders, float dt){
         applyForcesAndPredict(particles,dt);
         grid.build(particles);
         std::vector<std::vector<int>> neighborList(particles.size());
-        for(int i = 0; i < (int)particles.size(); i++){
+        for(int i = 0; i < particles.size(); i++) {
             neighborList[i] = grid.neighbors(particles[i].predicted, particles);
+        }
+        // detect surfaces
+        for (int i = 0; i < particles.size(); i++) {
+            // interpolate closer to 1 if less neighbors (more surface weight)
+            particles[i].surface = glm::mix(particles[i].surface, neighborList[i].size() < surfaceThreshold ? 1.0f : 0.0f, 0.05f);
         }
         for(int i=0; i<iterations; i++){
             calculateLambda(particles, neighborList);
             updatePositions(particles, neighborList);
-            // dampVelocities(particles);
             applyBoundaryConditions(particles);
+            applyCollisions(particles, colliders);
         }
+        computeNormals(particles, neighborList);
         updateVelocities(particles,dt);
         applyViscosity(particles, neighborList);
     }
@@ -62,7 +69,6 @@ private:
     void applyForcesAndPredict(std::vector<Particle>& particles, float dt){
         for(auto& p : particles) {
             p.velocity += dt * glm::vec3(0.0f, -gravity, 0.0f);
-            // p.velocity += dt * glm::vec3(0.0f, 0.0f, 0.0f);
             p.predicted = p.position + dt*p.velocity;
         }
     }
@@ -79,18 +85,14 @@ private:
         #pragma omp parallel for schedule(dynamic)
         for(int i = 0; i<particles.size(); i++){
             Particle& p_i = particles[i];
-            // auto neighbors = grid.neighbors(p_i.predicted, particles);
             auto neighbors = neighborList[i];
 
             float rho_i = 0.0f;
             // eq2
             for(int j : neighbors) {
                 float r = glm::length(p_i.predicted - particles[j].predicted);
-                // rho_i += particles[j].mass * poly6(r,h,poly6_coeff);
                 rho_i += poly6(r,h,poly6_coeff);
             }
-            // std::cout << rho_i << std::endl;
-
 
             // eq1
             float C_i = rho_i/rho0 - 1.0f;
@@ -104,12 +106,10 @@ private:
                 grad_i += grad; //k = i case: if the particle moves, calculate how it changes for every neighbor and accumulate before squaring
                 denominator += glm::dot(grad, grad); //k = j case: if the particle's neighbor moves, accumulate it directly
                 // grad should be negative in k=j case but doesn't matter because we square
-            } 
-            denominator += glm::dot(grad_i, grad_i); 
-
+            }
+            denominator += glm::dot(grad_i, grad_i);
             p_i.lambda = -C_i / (denominator + epsilon);
         }
-        // exit(1);
     }
 
     // eq12; algo 1 lines 13, 17
@@ -119,9 +119,7 @@ private:
         std::vector<glm::vec3> deltas(particles.size(), glm::vec3(0.0f));
         #pragma omp parallel for schedule(dynamic)
         for(int i = 0; i<particles.size(); i++){
-            // deltas[i] = glm::vec3(0,0,0);
             Particle& p_i = particles[i];
-            // auto neighbors = grid.neighbors(p_i.predicted, particles);
             auto neighbors = neighborList[i];
 
             for(int j : neighbors){
@@ -133,7 +131,6 @@ private:
                 float s_corr = -1*scorr_k*pow(ratio,scorr_n);
                 glm::vec3 grad = spiky_grad(p_i.predicted - particles[j].predicted, h, spiky_coeff);
                 deltas[i] += (p_i.lambda + particles[j].lambda + s_corr) * grad;
-                // deltas[i] += (p_i.lambda + particles[j].lambda) * grad;
             }
             deltas[i] /= rho0;
         }
@@ -149,7 +146,7 @@ private:
     void applyBoundaryConditions(std::vector<Particle>& particles) {
         // axis aligned box for now; can replace with something more complex if needed
         const float floor_y  =  0.0f;
-        const float wall_x   =  1.5f;
+        const float wall_x   =  2.0f;
         const float wall_z   =  1.5f;
 
         for (auto& p : particles) {
@@ -163,12 +160,14 @@ private:
         }
     }
 
-    // void dampVelocities(std::vector<Particle>& particles) {
-    //     const float damping = 0.98f; 
-    //     for (auto& p : particles)
-    //         p.velocity *= damping;
-    // }
-    
+    void applyCollisions(std::vector<Particle>& particles, std::vector<Collider*>& colliders) {
+        for (auto& p : particles) {
+            for (auto& c : colliders) {
+                c->resolveCollision(p);
+            }
+        }
+    }
+
     void applyViscosity(std::vector<Particle>& particles, const std::vector<std::vector<int>>& neighborList) {
         std::vector<glm::vec3> deltas(particles.size(), glm::vec3(0.0f));
 
@@ -185,6 +184,21 @@ private:
 
         for (int i = 0; i < (int)particles.size(); i++)
             particles[i].velocity += deltas[i];
+    }
+
+    // eq 8
+    void computeNormals(std::vector<Particle>& particles, const std::vector<std::vector<int>>& neighborList){
+        for(int i = 0; i < particles.size(); i++){
+            Particle& p_i = particles[i];
+            if (p_i.surface < 0.5) continue;
+            glm::vec3 grad(0.0f);
+            for(int j : neighborList[i]){
+                if(i==j) continue;
+                grad += spiky_grad(p_i.position - particles[j].position, h, spiky_coeff);
+            }
+            float len = glm::length(grad);
+            p_i.normal = len > 1e-6 ? -grad / len : glm::vec3(0.0f, 1.0f, 0.0f);
+        }
     }
 };
 

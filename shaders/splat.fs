@@ -2,6 +2,14 @@
 
 in vec2 fragPos;
 in vec4 vColor;
+in vec3 vNormal;
+in float vDepth;
+in float vSurface;
+
+uniform vec3 lightDir;
+uniform float blur;
+uniform float specular;
+uniform float roughness;
 
 out vec4 fragColor;
 
@@ -10,6 +18,17 @@ void main()
   // see Botsch et al
   float r = dot(fragPos, fragPos);
   if (r > 1.0) discard;
-  float rho = exp(-r) * vColor.a;
-  fragColor = vec4(rho * vColor.rgb, rho);
+
+  float diff = max(dot(normalize(vNormal), normalize(lightDir)), 0.0);
+  // float spec = vSurface * min(pow(diff, 1.0 / roughness), 0.3);
+  float spec = vSurface > 0.3 ? min(pow(diff, 1.0 / roughness), 0.3) : 0;
+
+  // TODO: get thickness
+  // cp(ri) = dp + sp ⊙ Ls(ri, np, ρp)
+  vec3 c = vColor.rgb * (0.6 + 0.4*diff) + specular * vec3(spec);
+
+  // vec3 depthColor = vColor.rgb * (1.0 / (1.0 + vDepth * 0.12));
+  // float depthOpacity = vColor.a * (1.0 / (1.0 + vDepth * 0.1));
+  float rho = exp(-r * blur) * vColor.a;
+  fragColor = vec4(rho * c, rho);
 }
