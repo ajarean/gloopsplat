@@ -50,8 +50,13 @@ struct Scene {
         colliders.push_back(new SphereCollider(center, radius));
     }
 
-    ~Scene() {
+    void clearColliders() {
         for (auto* c : colliders) delete c;
+        colliders.clear();
+    }
+
+    ~Scene() {
+        clearColliders();
     }
 };
 

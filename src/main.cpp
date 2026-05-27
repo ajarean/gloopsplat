@@ -90,7 +90,10 @@ int main() {
   SplatRenderer renderer;
 
   Scene scene(0.4f, 9.8f, 68.0f, 100.0f);
-  scene.addSphereCollider(glm::vec3(0.0f, 2.0f, 0.0f), 1.0f);
+  bool sphereEnabled = true;
+  glm::vec3 sphereCenter(0.0f, 2.0f, 0.0f);
+  float sphereRadius = 1.0f;
+
   Block block;
   scene.addBlock(block);
 
@@ -155,9 +158,23 @@ int main() {
       }
 
       if (ImGui::BeginTabItem("Colliders")) {
+        ImGui::Text("Boundaries");
         ImGui::SliderFloat("Floor Y", &scene.solver.floor_y, -2.0f, 2.0f, "%.3f");
         ImGui::SliderFloat("Wall X", &scene.solver.wall_x, 0.5f, 5.0f, "%.3f");
         ImGui::SliderFloat("Wall Z", &scene.solver.wall_z, 0.5f, 5.0f, "%.3f");
+        ImGui::SeparatorText("Sphere Colliders");
+        bool sphereChanged = false;
+        sphereChanged |= ImGui::Checkbox("Sphere", &sphereEnabled);
+        sphereChanged |= ImGui::SliderFloat("Sphere X", &sphereCenter.x, -5.0f, 5.0f, "%.3f");
+        sphereChanged |= ImGui::SliderFloat("Sphere Y", &sphereCenter.y, -5.0f, 5.0f, "%.3f");
+        sphereChanged |= ImGui::SliderFloat("Radius", &sphereRadius, 0.5f, 3.0f, "%.3f");
+        if (sphereChanged) {
+          scene.clearColliders();
+          if (sphereEnabled) {
+            scene.addSphereCollider(sphereCenter, sphereRadius);
+          }
+        }
+
         ImGui::EndTabItem();
       }
 
@@ -167,7 +184,9 @@ int main() {
     if (ImGui::Button("Reload [R]") || shouldReload) {
       scene.particles.clear();
       scene.clearColliders();
-      scene.addSphereCollider(glm::vec3(0.0f, 2.0f, 0.0f), 1.0f);
+      if (sphereEnabled) {
+        scene.addSphereCollider(sphereCenter, sphereRadius);
+      }
       scene.addBlock(block);
       shouldReload = false;
     }
