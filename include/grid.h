@@ -39,7 +39,8 @@ struct Grid {
     
     void build(const std::vector<Particle>& particles) {
         int n = (int)particles.size();
-        tableSize = n; // table size = particle count, good tradeoff (Teschner)
+        // tableSize = n; // table size = particle count, good tradeoff (Teschner)
+        tableSize = 2*n + 1;
 
         cellCount.assign(tableSize, 0);
         cellStart.resize(tableSize);
