@@ -53,6 +53,8 @@ struct Solver {
         applyForcesAndPredict(particles,dt);
         grid.build(particles);
         std::vector<std::vector<int>> neighborList(particles.size());
+        
+        #pragma omp parallel for schedule(dynamic)
         for(int i = 0; i < particles.size(); i++) {
             neighborList[i] = grid.neighbors(particles[i].predicted, particles);
         }
@@ -176,6 +178,7 @@ private:
     void applyViscosity(std::vector<Particle>& particles, const std::vector<std::vector<int>>& neighborList) {
         std::vector<glm::vec3> deltas(particles.size(), glm::vec3(0.0f));
 
+        #pragma omp parallel for schedule(dynamic)
         for (int i = 0; i < (int)particles.size(); i++) {
             Particle& p_i = particles[i];
             for (int j : neighborList[i]) {
