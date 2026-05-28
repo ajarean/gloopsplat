@@ -37,7 +37,7 @@ glm::vec2 viewport = glm::vec2(width, height);
 // camera
 // Camera camera(vec3(0.0f, 1.0f, 5.0f));
 
-Camera camera(vec3(0.0f, 6.0f, 17.0f), glm::vec3(0,1,0), -90.0f, -15.0f);
+Camera camera(vec3(0.0f, 12.0f, 30.0f), glm::vec3(0,1,0), -90.0f, -15.0f);
 
 float lastX = width / 2.0f;
 float lastY = height / 2.0f;
@@ -61,7 +61,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 unsigned int loadCubemap(int cubemapIndex);
 
 std::vector<std::string> cubemaps = {
-  "skybox", "space"
+  "skybox", "space", "mountain"
 };
 
 int main() {
@@ -218,9 +218,9 @@ int main() {
 
       if (ImGui::BeginTabItem("Colliders")) {
         ImGui::Text("Boundaries");
-        ImGui::SliderFloat("Floor Y", &scene.solver.floor_y, -2.0f, 2.0f, "%.3f");
-        ImGui::SliderFloat("Wall X", &scene.solver.wall_x, 0.5f, 5.0f, "%.3f");
-        ImGui::SliderFloat("Wall Z", &scene.solver.wall_z, 0.5f, 5.0f, "%.3f");
+        ImGui::SliderFloat("Floor Y", &scene.solver.floor_y, -5.0f, 5.0f, "%.3f");
+        ImGui::SliderFloat("Wall X", &scene.solver.wall_x, 0.5f, 10.0f, "%.3f");
+        ImGui::SliderFloat("Wall Z", &scene.solver.wall_z, 0.5f, 10.0f, "%.3f");
         ImGui::SeparatorText("Sphere Colliders");
         bool sphereChanged = false;
         sphereChanged |= ImGui::Checkbox("Sphere", &sphereEnabled);
@@ -258,9 +258,13 @@ int main() {
     if(prerender){
       prerender=false;
       std::cout << "Prerendering start!\n";
+      if (isPaused)
+      {
+        isPaused = false;
+      }
       
-      scene.particles.clear();
-      scene.addBlock(block);
+      // scene.particles.clear();
+      // scene.addBlock(block);
 
       const int OUT_W = 1280;
       const int OUT_H = 720;
