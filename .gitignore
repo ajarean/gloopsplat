@@ -27,3 +27,4 @@ CMakeSettings.json
 .vscode/
 imgui.ini
 src/test*.cpp
+*.mp4
