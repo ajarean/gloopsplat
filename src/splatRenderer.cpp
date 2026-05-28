@@ -58,6 +58,7 @@ SplatRenderer::SplatRenderer() {
 }
 
 void SplatRenderer::draw(std::vector<Particle> &particles, glm::mat4 &modelView) {
+  if (particles.size() == 0) return;
   depthSort(particles, modelView);
   updateBuffers(particles);
 

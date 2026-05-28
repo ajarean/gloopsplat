@@ -118,6 +118,7 @@ int main() {
 
   float specular  = 0.5f;
   float roughness = 0.1f;
+  float diffuse = 1.0f;
   float blur = 0.8f;
   int shaderType = 0;
   bool showSkybox = true;
@@ -188,6 +189,7 @@ int main() {
         ImGui::SliderFloat("Opacity", &block.color[3], 0.01f, 1.0f);
         ImGui::SliderFloat("Specular",  &specular,  0.0f, 1.0f, "%.3f");
         ImGui::SliderFloat("Roughness", &roughness, 0.01f, 1.0f, "%.3f");
+        ImGui::SliderFloat("Diffuse", &diffuse, 0.01, 1.0f, "%.3f");
         ImGui::SliderFloat("Blur", &blur, 0.0f, 1.0f, "%.3f");
         
         ImGui::EndTabItem();
@@ -200,10 +202,13 @@ int main() {
         ImGui::SliderFloat("rho0", &scene.solver.rho0, 1.0f, 200.0f, "%.3f");
         ImGui::SliderFloat("Epsilon", &scene.solver.epsilon, 1.0f, 1000.0f, "%.3f");
         ImGui::SliderInt("Iterations", &scene.solver.iterations, 1, 10);
+        ImGui::SeparatorText("s_corr");
+        ImGui::SliderFloat("k", &scene.solver.scorr_k, 0.0f, 0.01f, "%.5f");
+        reloadKernels |= ImGui::SliderFloat("dq", &scene.solver.scorr_dq, 0.01f, 0.5f, "%.3f");
+        ImGui::SliderInt("n", &scene.solver.scorr_n, 1, 8);
 
-        ImGui::Text("TODO:s_corr");
-        // TODO: andy add stuff for this + xsph stuff cuz idk what the params do
-
+        ImGui::SeparatorText("XSPH");
+        ImGui::SliderFloat("c", &scene.solver.xsph_c, 0.0f, 0.05f, "%.4f");
 
         ImGui::SliderInt("Surface threshold", &scene.solver.surfaceThreshold, 1, 100);
 
@@ -420,6 +425,7 @@ int main() {
     shader.setFloat("blur", blur);
     shader.setFloat("specular",  specular);
     shader.setFloat("roughness", roughness);
+    shader.setFloat("diffuse", diffuse);
     shader.setInt("type", shaderType);
 
     glActiveTexture(GL_TEXTURE0);

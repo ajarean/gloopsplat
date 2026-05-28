@@ -50,6 +50,7 @@ struct Solver {
     }
 
     void update(std::vector<Particle>& particles, std::vector<Collider*>& colliders, float dt){
+        if (particles.size() == 0) return;
         applyForcesAndPredict(particles,dt);
         grid.build(particles);
         std::vector<std::vector<int>> neighborList(particles.size());
@@ -64,14 +65,15 @@ struct Solver {
             // interpolate closer to 1 if less neighbors (more surface weight)
             particles[i].surface = glm::mix(particles[i].surface, neighborList[i].size() < surfaceThreshold ? 1.0f : 0.0f, 0.05f);
         }
+
         for(int i=0; i<iterations; i++){
             calculateLambda(particles, neighborList);
             updatePositions(particles, neighborList);
             applyBoundaryConditions(particles);
             applyCollisions(particles, colliders);
         }
-        computeNormals(particles, neighborList);
         updateVelocities(particles,dt);
+        computeNormals(particles, neighborList);
         applyViscosity(particles, neighborList);
     }
 
@@ -197,6 +199,7 @@ private:
 
     // eq 8
     void computeNormals(std::vector<Particle>& particles, const std::vector<std::vector<int>>& neighborList){
+        #pragma omp parallel for schedule(dynamic)
         for(int i = 0; i < particles.size(); i++){
             glm::vec3 grad(0.0f);
             for(int j : neighborList[i]){
@@ -207,10 +210,12 @@ private:
         }
 
         // avg w neighbors
+        #pragma omp parallel for schedule(dynamic)
         for(int i = 0; i < particles.size(); i++){
             // if (particles[i].surface < 0.5f) {
-                // particles[i].normal = glm::vec3(0.0f, 1.0f, 0.0f);
-                // continue;
+            //     float len = glm::length(particles[i].normal);
+            //     particles[i].normal = len > 1e-6f ? -particles[i].normal / len : glm::vec3(0.0f, 1.0f, 0.0f);
+            //     continue;
             // }
             glm::vec3 smoothed(0.0f);
             for(int j : neighborList[i]){
