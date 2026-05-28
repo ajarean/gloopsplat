@@ -11,8 +11,7 @@ class SplatRenderer {
 public:
   SplatRenderer();
   ~SplatRenderer();
-  void draw(Shader &shader, std::vector<Particle>& particles, glm::mat4 &projection,
-    glm::mat4 &modelView, glm::vec2 &focal, glm::vec2 &viewport);
+  void draw(std::vector<Particle> &particles, glm::mat4 &modelView);
 private:
   unsigned int VAO, VBO, EBO, splatVBO;
   std::vector<unsigned int> indices;
