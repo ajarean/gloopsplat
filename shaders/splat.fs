@@ -10,6 +10,7 @@ in vec3 vPosition;
 uniform samplerCube cubeMap;
 uniform vec3 lightDir;
 uniform float blur;
+uniform float diffuse;
 uniform float specular;
 uniform float roughness;
 uniform vec3 cameraPos;
@@ -29,7 +30,7 @@ void main()
   float alpha = 1.0/roughness;
   float spec = pow(diff, alpha);
 
-  vec3 c_color = vColor.rgb * (0.6 + 0.4*diff) + specular * vec3(spec);
+  vec3 c_color = vColor.rgb * (0.4 + diffuse*0.6*diff) + specular * vec3(spec);
 
   // TODO: get thickness
   // cp(ri) = dp + sp ⊙ Ls(ri, np, ρp) (Gaussian Splashing eq. 4)
@@ -48,7 +49,7 @@ void main()
   vec3 k = vec3(0.5, 0.35, 0.2);
   float thickness = rho * (1.0 / (1.0 + vDepth * 0.1));
   vec3 dp = exp(-k*thickness) * Ls;
-  vec3 c_env = dp + vec3(specular) * Ls;
+  vec3 c_env = diffuse * dp + vec3(specular) * Ls;
 
   vec3 v = normalize(cameraPos - vPosition);
   vec3 h = normalize(normalize(lightDir) + v);
@@ -60,7 +61,7 @@ void main()
 
   // fresnel equation (van der laan eq 13), approximated
   // C_out = c_refrac * (1-F) + c_reflec*F + k_s(n dot h)^alpha
-  vec3 c_fres = dp * (1.0 - F) + Ls * F + specular * vec3(spec);
+  vec3 c_fres = diffuse*dp * (1.0 - F) + Ls * F + specular * vec3(spec);
 
   if (type == 0) c = c_color;
   else if (type == 1) c = c_env;

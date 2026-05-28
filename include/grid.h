@@ -5,6 +5,8 @@
 #include <vector>
 #include <unordered_set>
 #include "particle.h"
+#include <chrono>
+#include <iostream>
 
 // https://matthias-research.github.io/pages/publications/tetraederCollision.pdf
 // teschner et al
@@ -81,15 +83,21 @@ struct Grid {
     std::vector<int> neighbors(glm::vec3 pos, const std::vector<Particle>& particles) const {
         std::vector<int> result;
         glm::ivec3 center = cell_coords(pos);
-        std::unordered_set<int> visitedKeys;
+        int visitedKeys[27]; // 27 neighbors
+        int visitedCount = 0;
 
         for (int dx = -1; dx <= 1; dx++){
             for (int dy = -1; dy <= 1; dy++){
                 for(int dz = -1; dz <= 1; dz++){
                     int key = hash(center + glm::ivec3(dx, dy, dz));
-                    if (visitedKeys.count(key)) continue; // skip duplicate keys
-                    visitedKeys.insert(key);
-                    // iterate over all particles in this cell
+                    bool seen = false;
+                    for (int v = 0; v < visitedCount; v++) {
+                        if (visitedKeys[v] == key)
+                            seen = true; break;
+                    }
+                    if (seen) continue;
+                    visitedKeys[visitedCount] = key;
+                    visitedCount++;
                     for (int k = cellStart[key]; k < cellStart[key] + cellCount[key]; k++) {
                         int idx = flat[k];
                         float dist = glm::length(particles[idx].predicted - pos);
