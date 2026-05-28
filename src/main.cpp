@@ -14,6 +14,7 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 #include <filesystem>
+#include <chrono>
 
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
@@ -34,7 +35,10 @@ int height = 1080;
 glm::vec2 viewport = glm::vec2(width, height);
 
 // camera
-Camera camera(vec3(0.0f, 1.0f, 5.0f));
+// Camera camera(vec3(0.0f, 1.0f, 5.0f));
+
+Camera camera(vec3(0.0f, 12.0f, 30.0f), glm::vec3(0,1,0), -90.0f, -15.0f);
+
 float lastX = width / 2.0f;
 float lastY = height / 2.0f;
 bool firstMouse = true;
@@ -46,6 +50,7 @@ float lastFrame = 0.0f;
 // config
 bool isPaused = false;
 bool shouldReload = false;
+bool prerender = false;
 
 void framebuffer_size_callback(GLFWwindow* window, int _width, int _height);
 void mouse_callback(GLFWwindow* window, double xposIn, double yposIn);
@@ -56,7 +61,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 unsigned int loadCubemap(int cubemapIndex);
 
 std::vector<std::string> cubemaps = {
-  "skybox", "space"
+  "skybox", "space", "mountain"
 };
 
 int main() {
@@ -108,11 +113,12 @@ int main() {
 
   Block block;
   scene.addBlock(block);
-
+  
   Skybox skybox;
 
   float specular  = 0.5f;
   float roughness = 0.1f;
+  float diffuse = 1.0f;
   float blur = 0.8f;
   int shaderType = 0;
   bool showSkybox = true;
@@ -138,9 +144,9 @@ int main() {
 
     if (ImGui::BeginTabBar("Config")) {
       if (ImGui::BeginTabItem("Scene")) {
-        ImGui::SliderInt("Nx", &block.nx, 1, 20);
-        ImGui::SliderInt("Ny", &block.ny, 1, 20);
-        ImGui::SliderInt("Nz", &block.nz, 1, 20);
+        ImGui::SliderInt("Nx", &block.nx, 1, 30);
+        ImGui::SliderInt("Ny", &block.ny, 1, 30);
+        ImGui::SliderInt("Nz", &block.nz, 1, 30);
         ImGui::SliderFloat("Spacing", &block.spacing, 0.05f, 0.5f, "%.3f");
         ImGui::SliderFloat("Radius",  &block.radius,  0.05f, 0.5f, "%.3f");
         if (ImGui::Button("Add New")) {
@@ -183,6 +189,7 @@ int main() {
         ImGui::SliderFloat("Opacity", &block.color[3], 0.01f, 1.0f);
         ImGui::SliderFloat("Specular",  &specular,  0.0f, 1.0f, "%.3f");
         ImGui::SliderFloat("Roughness", &roughness, 0.01f, 1.0f, "%.3f");
+        ImGui::SliderFloat("Diffuse", &diffuse, 0.01, 1.0f, "%.3f");
         ImGui::SliderFloat("Blur", &blur, 0.0f, 1.0f, "%.3f");
         
         ImGui::EndTabItem();
@@ -195,10 +202,13 @@ int main() {
         ImGui::SliderFloat("rho0", &scene.solver.rho0, 1.0f, 200.0f, "%.3f");
         ImGui::SliderFloat("Epsilon", &scene.solver.epsilon, 1.0f, 1000.0f, "%.3f");
         ImGui::SliderInt("Iterations", &scene.solver.iterations, 1, 10);
+        ImGui::SeparatorText("s_corr");
+        ImGui::SliderFloat("k", &scene.solver.scorr_k, 0.0f, 0.01f, "%.5f");
+        reloadKernels |= ImGui::SliderFloat("dq", &scene.solver.scorr_dq, 0.01f, 0.5f, "%.3f");
+        ImGui::SliderInt("n", &scene.solver.scorr_n, 1, 8);
 
-        ImGui::Text("TODO:s_corr");
-        // TODO: andy add stuff for this + xsph stuff cuz idk what the params do
-
+        ImGui::SeparatorText("XSPH");
+        ImGui::SliderFloat("c", &scene.solver.xsph_c, 0.0f, 0.05f, "%.4f");
 
         ImGui::SliderInt("Surface threshold", &scene.solver.surfaceThreshold, 1, 100);
 
@@ -208,9 +218,9 @@ int main() {
 
       if (ImGui::BeginTabItem("Colliders")) {
         ImGui::Text("Boundaries");
-        ImGui::SliderFloat("Floor Y", &scene.solver.floor_y, -2.0f, 2.0f, "%.3f");
-        ImGui::SliderFloat("Wall X", &scene.solver.wall_x, 0.5f, 5.0f, "%.3f");
-        ImGui::SliderFloat("Wall Z", &scene.solver.wall_z, 0.5f, 5.0f, "%.3f");
+        ImGui::SliderFloat("Floor Y", &scene.solver.floor_y, -5.0f, 5.0f, "%.3f");
+        ImGui::SliderFloat("Wall X", &scene.solver.wall_x, 0.5f, 10.0f, "%.3f");
+        ImGui::SliderFloat("Wall Z", &scene.solver.wall_z, 0.5f, 10.0f, "%.3f");
         ImGui::SeparatorText("Sphere Colliders");
         bool sphereChanged = false;
         sphereChanged |= ImGui::Checkbox("Sphere", &sphereEnabled);
@@ -244,6 +254,149 @@ int main() {
 
     ImGui::End();
 
+    // prerender START
+    if(prerender){
+      prerender=false;
+      std::cout << "Prerendering start!\n";
+      if (isPaused)
+      {
+        isPaused = false;
+      }
+      
+      // scene.particles.clear();
+      // scene.addBlock(block);
+
+      const int OUT_W = 1280;
+      const int OUT_H = 720;
+
+      // https://learnopengl.com/Advanced-OpenGL/Framebuffers
+      GLuint fbo, colorTex, rbo;
+      glGenFramebuffers(1, &fbo);
+      glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+
+      glGenTextures(1, &colorTex);
+      glBindTexture(GL_TEXTURE_2D, colorTex);
+      glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, OUT_W, OUT_H, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+      glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, colorTex, 0);
+
+      glGenRenderbuffers(1, &rbo);
+      glBindRenderbuffer(GL_RENDERBUFFER, rbo);
+      glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, OUT_W, OUT_H);
+      glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, rbo);
+
+      glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+      std::string ffmpegCmd = 
+        "ffmpeg -y -f rawvideo -pixel_format rgb24 "
+        "-video_size 1280x720 -framerate 30 "
+        "-i pipe:0 -c:v libx264 -pix_fmt yuv420p output.mp4";
+
+      // https://stackoverflow.com/questions/34511312/how-to-encode-a-video-from-several-images-generated-in-a-c-program-without-wri
+      
+      FILE* ffmpeg = _popen(ffmpegCmd.c_str(), "wb"); 
+      if (!ffmpeg) {
+          std::cout << "Failed to open ffmpeg pipe\n";
+          return -1;
+      }
+      const int FPS = 30;
+      const int DURATION = 10;
+      const int TOTAL_FRAMES = FPS * DURATION;
+      const float FRAME_DT = 1.0f / FPS;
+
+      std::vector<std::vector<Particle>> frames(TOTAL_FRAMES);
+      std::cout << "Presimulating frames...\n";
+      
+      auto simStart = std::chrono::high_resolution_clock::now();
+
+      for (int f = 0; f < TOTAL_FRAMES; f++) {
+          scene.update(FRAME_DT);
+          frames[f] = scene.particles; 
+          if (f % 30 == 0) std::cout << "  frame " << f << "/" << TOTAL_FRAMES << "\n";
+      }
+
+      auto simEnd = std::chrono::high_resolution_clock::now();
+      float simMs = std::chrono::duration<float>(simEnd - simStart).count();
+
+      std::vector<unsigned char> pixels(OUT_W * OUT_H * 3);
+
+      std::cout << "Rendering frames...\n";
+      glViewport(0, 0, OUT_W, OUT_H);
+      glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+
+      mat4 projection = perspective(radians(camera.Zoom), (float)OUT_W / OUT_H, 0.1f, 100.0f);
+      mat4 modelView = camera.GetViewMatrix();
+      float tanHalfFovy = tan(radians(camera.Zoom) * 0.5f);
+      vec2 focal = vec2((0.5f * OUT_W) / tanHalfFovy, (0.5f * OUT_H) / tanHalfFovy);
+      vec2 outViewport = vec2(OUT_W, OUT_H);
+
+      auto renderStart = std::chrono::high_resolution_clock::now();
+
+      for (int f = 0; f < TOTAL_FRAMES; f++) {
+          glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
+          glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+          glEnable(GL_BLEND);
+          glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+
+          // skybox
+          if (showSkybox) {
+              mat4 view = glm::mat4(glm::mat3(camera.GetViewMatrix()));
+              skybox.draw(view, projection, cubemapTexture);
+          }
+
+          shader.use();
+          shader.setInt("cubeMap", 0);
+          shader.setVec3("cameraPos", camera.Position);
+          shader.setMat4("projection", projection);
+          shader.setMat4("modelView", modelView);
+          shader.setVec2("focal", focal);
+          shader.setVec2("viewport", outViewport);
+          shader.setVec3("lightDir", glm::normalize(glm::vec3(1.0f, 1.0f, 1.0f)));
+          shader.setFloat("blur", blur);
+          shader.setFloat("specular", specular);
+          shader.setFloat("roughness", roughness);
+          shader.setInt("type", shaderType);
+
+          glActiveTexture(GL_TEXTURE0);
+          glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTexture);
+          renderer.draw(frames[f], modelView);
+
+          // https://registry.khronos.org/OpenGL-Refpages/gl4/html/glReadPixels.xhtml
+          // need to flip vertically cuz opengl and ffmpeg expect different origins
+          glReadPixels(0, 0, OUT_W, OUT_H, GL_RGB, GL_UNSIGNED_BYTE, pixels.data());
+          for (int row = 0; row < OUT_H / 2; row++) {
+              int opposite = OUT_H - 1 - row;
+              std::swap_ranges(
+                  pixels.begin() + row * OUT_W * 3,
+                  pixels.begin() + row * OUT_W * 3 + OUT_W * 3,
+                  pixels.begin() + opposite * OUT_W * 3
+              );
+          }
+
+          fwrite(pixels.data(), 1, pixels.size(), ffmpeg);
+
+          if (f % 30 == 0) std::cout << "  rendered " << f << "/" << TOTAL_FRAMES << "\n";
+
+        }
+        
+      auto renderEnd = std::chrono::high_resolution_clock::now();
+      float renderMs = std::chrono::duration<float>(renderEnd - renderStart).count();
+      
+      glBindFramebuffer(GL_FRAMEBUFFER, 0);
+      glViewport(0, 0, width, height);
+      _pclose(ffmpeg);
+      std::cout << "Done! output.mp4 written.\n";
+
+      std::cout << "Simulation done in " << simMs << "s\n";
+      std::cout << "Rendering done in " << renderMs << "s\n";
+      std::cout << "Total: " << (simMs + renderMs) << "s\n";
+      // cleanup
+      glDeleteFramebuffers(1, &fbo);
+      glDeleteTextures(1, &colorTex);
+      glDeleteRenderbuffers(1, &rbo);
+    }
+    // prerender END 
+
     glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glEnable(GL_BLEND);
@@ -276,6 +429,7 @@ int main() {
     shader.setFloat("blur", blur);
     shader.setFloat("specular",  specular);
     shader.setFloat("roughness", roughness);
+    shader.setFloat("diffuse", diffuse);
     shader.setInt("type", shaderType);
 
     glActiveTexture(GL_TEXTURE0);
@@ -319,6 +473,8 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
     isPaused = !isPaused;
   if (key == GLFW_KEY_R)
     shouldReload = true;
+  if(key == GLFW_KEY_P)
+    prerender = true;
 }
 
 void framebuffer_size_callback(GLFWwindow* window, int _width, int _height) {

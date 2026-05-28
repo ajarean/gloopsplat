@@ -20,7 +20,7 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(glm)
 
 find_package(OpenGL REQUIRED)
-find_package(OpenMP)
+find_package(OpenMP REQUIRED)
 
 file(GLOB IMGUI_SOURCES src/imgui/*.cpp)
 
