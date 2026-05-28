@@ -34,7 +34,10 @@ int height = 1080;
 glm::vec2 viewport = glm::vec2(width, height);
 
 // camera
-Camera camera(vec3(0.0f, 1.0f, 5.0f));
+// Camera camera(vec3(0.0f, 1.0f, 5.0f));
+
+Camera camera(vec3(0.0f, 3.0f, 7.0f), glm::vec3(0,1,0), -90.0f, -15.0f);
+
 float lastX = width / 2.0f;
 float lastY = height / 2.0f;
 bool firstMouse = true;
@@ -101,6 +104,40 @@ int main() {
   Shader shader("./shaders/splat.vs", "./shaders/splat.fs");
   SplatRenderer renderer;
 
+  const int OUT_W = 1280;
+  const int OUT_H = 720;
+
+  // https://learnopengl.com/Advanced-OpenGL/Framebuffers
+  GLuint fbo, colorTex, rbo;
+  glGenFramebuffers(1, &fbo);
+  glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+
+  glGenTextures(1, &colorTex);
+  glBindTexture(GL_TEXTURE_2D, colorTex);
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, OUT_W, OUT_H, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+  glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, colorTex, 0);
+
+  glGenRenderbuffers(1, &rbo);
+  glBindRenderbuffer(GL_RENDERBUFFER, rbo);
+  glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, OUT_W, OUT_H);
+  glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, rbo);
+
+  glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+  std::string ffmpegCmd = 
+    "ffmpeg -y -f rawvideo -pixel_format rgb24 "
+    "-video_size 1280x720 -framerate 30 "
+    "-i pipe:0 -c:v libx264 -pix_fmt yuv420p output.mp4";
+
+  // https://stackoverflow.com/questions/34511312/how-to-encode-a-video-from-several-images-generated-in-a-c-program-without-wri
+  
+  FILE* ffmpeg = _popen(ffmpegCmd.c_str(), "wb"); 
+  if (!ffmpeg) {
+      std::cout << "Failed to open ffmpeg pipe\n";
+      return -1;
+  }
+
   Scene scene(0.4f, 9.8f, 68.0f, 100.0f);
   bool sphereEnabled = false;
   glm::vec3 sphereCenter(0.0f, 2.0f, 0.0f);
@@ -109,6 +146,18 @@ int main() {
   Block block;
   scene.addBlock(block);
 
+  const int FPS = 30;
+  const int DURATION = 10;
+  const int TOTAL_FRAMES = FPS * DURATION;
+  const float FRAME_DT = 1.0f / FPS;
+
+  std::vector<std::vector<Particle>> frames(TOTAL_FRAMES);
+  for (int f = 0; f < TOTAL_FRAMES; f++) {
+      scene.update(FRAME_DT);
+      frames[f] = scene.particles; 
+      if (f % 30 == 0) std::cout << "  frame " << f << "/" << TOTAL_FRAMES << "\n";
+  }
+
   Skybox skybox;
 
   float specular  = 0.5f;
@@ -116,6 +165,74 @@ int main() {
   float blur = 0.8f;
   int shaderType = 0;
   bool showSkybox = true;
+
+  std::vector<unsigned char> pixels(OUT_W * OUT_H * 3);
+
+  std::cout << "Rendering frames...\n";
+  glViewport(0, 0, OUT_W, OUT_H);
+  glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+
+  mat4 projection = perspective(radians(camera.Zoom), (float)OUT_W / OUT_H, 0.1f, 100.0f);
+  mat4 modelView = camera.GetViewMatrix();
+  float tanHalfFovy = tan(radians(camera.Zoom) * 0.5f);
+  vec2 focal = vec2((0.5f * OUT_W) / tanHalfFovy, (0.5f * OUT_H) / tanHalfFovy);
+  vec2 outViewport = vec2(OUT_W, OUT_H);
+
+  for (int f = 0; f < TOTAL_FRAMES; f++) {
+      glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
+      glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+      glEnable(GL_BLEND);
+      glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+
+      // skybox
+      if (showSkybox) {
+          mat4 view = glm::mat4(glm::mat3(camera.GetViewMatrix()));
+          skybox.draw(view, projection, cubemapTexture);
+      }
+
+      shader.use();
+      shader.setInt("cubeMap", 0);
+      shader.setVec3("cameraPos", camera.Position);
+      shader.setMat4("projection", projection);
+      shader.setMat4("modelView", modelView);
+      shader.setVec2("focal", focal);
+      shader.setVec2("viewport", outViewport);
+      shader.setVec3("lightDir", glm::normalize(glm::vec3(1.0f, 1.0f, 1.0f)));
+      shader.setFloat("blur", blur);
+      shader.setFloat("specular", specular);
+      shader.setFloat("roughness", roughness);
+      shader.setInt("type", shaderType);
+
+      glActiveTexture(GL_TEXTURE0);
+      glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTexture);
+      renderer.draw(frames[f], modelView);
+
+      // https://registry.khronos.org/OpenGL-Refpages/gl4/html/glReadPixels.xhtml
+      // need to flip vertically cuz opengl and ffmpeg expect different origins
+      glReadPixels(0, 0, OUT_W, OUT_H, GL_RGB, GL_UNSIGNED_BYTE, pixels.data());
+      for (int row = 0; row < OUT_H / 2; row++) {
+          int opposite = OUT_H - 1 - row;
+          std::swap_ranges(
+              pixels.begin() + row * OUT_W * 3,
+              pixels.begin() + row * OUT_W * 3 + OUT_W * 3,
+              pixels.begin() + opposite * OUT_W * 3
+          );
+      }
+
+      fwrite(pixels.data(), 1, pixels.size(), ffmpeg);
+
+      if (f % 30 == 0) std::cout << "  rendered " << f << "/" << TOTAL_FRAMES << "\n";
+  }
+
+  glBindFramebuffer(GL_FRAMEBUFFER, 0);
+  glViewport(0, 0, width, height);
+  _pclose(ffmpeg);
+  std::cout << "Done! output.mp4 written.\n";
+
+  // cleanup
+  glDeleteFramebuffers(1, &fbo);
+  glDeleteTextures(1, &colorTex);
+  glDeleteRenderbuffers(1, &rbo);
 
   while (!glfwWindowShouldClose(window)) {
     float currentFrame = static_cast<float>(glfwGetTime());

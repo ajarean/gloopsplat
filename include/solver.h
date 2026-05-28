@@ -19,8 +19,8 @@ struct Solver {
     int surfaceThreshold = 20; // max number of neighbors to count as surface
 
     float floor_y = 0.0f;
-    float wall_x = 1.5f;
-    float wall_z = 1.5f;
+    float wall_x = 3.0f;
+    float wall_z = 3.0f;
 
     float poly6_coeff; // 315/(64pi*h^9)
     float spiky_coeff; // -45/(pi*h^6)

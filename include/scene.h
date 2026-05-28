@@ -5,9 +5,9 @@
 
 struct Block {
     glm::vec3 origin = glm::vec3(-0.75f, 2.0f, -0.75f);
-    int nx = 7;
-    int ny = 7;
-    int nz = 7;
+    int nx = 10;
+    int ny = 10;
+    int nz = 10;
     float spacing = 0.3f;
     float mass = 1.0f;
     float radius = 0.15f;
