@@ -106,7 +106,8 @@ private:
             }
 
             // eq1
-            float C_i = rho_i/rho0 - 1.0f;
+            // float C_i = rho_i/rho0 - 1.0f;
+            float C_i = std::max(rho_i / rho0 - 1.0f, 0.0f);
 
             // eq8
             float denominator = 0.0f;

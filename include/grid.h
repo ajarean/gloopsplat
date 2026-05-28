@@ -3,7 +3,7 @@
 
 #include <glm/glm.hpp>
 #include <vector>
-#include <unordered_map>
+#include <unordered_set>
 #include "particle.h"
 
 // https://matthias-research.github.io/pages/publications/tetraederCollision.pdf
@@ -17,9 +17,11 @@ struct Grid {
 
     // std::unordered_map<int, std::vector<int>> cells;
     int tableSize;
+    int lastN = -1;
     std::vector<int> cellCount; // particles per cell
     std::vector<int> cellStart; // start index of cell in flat
     std::vector<int> flat; // particle indices grouped by cell
+    std::vector<int> insertAt;
 
     Grid(float h){
         this->h = h;
@@ -39,11 +41,23 @@ struct Grid {
     
     void build(const std::vector<Particle>& particles) {
         int n = (int)particles.size();
-        tableSize = n; // table size = particle count, good tradeoff (Teschner)
+        // tableSize = n; // table size = particle count, good tradeoff (Teschner)
+        // tableSize = nextPrime(10*n) ;
 
-        cellCount.assign(tableSize, 0);
-        cellStart.resize(tableSize);
-        flat.resize(n);
+        // cellCount.assign(tableSize, 0);
+        // cellStart.resize(tableSize);
+        // flat.resize(n);
+
+        if (n != lastN) {
+            tableSize = 3 * n;
+            cellCount.resize(tableSize);
+            cellStart.resize(tableSize);
+            insertAt.resize(tableSize);
+            flat.resize(n);
+            lastN = n;
+        }
+
+        std::fill(cellCount.begin(), cellCount.end(), 0);
 
         // pass 1: count particles per cell
         // macklin and muller 2013 algo 1: 
@@ -57,7 +71,7 @@ struct Grid {
             cellStart[i] = cellStart[i-1] + cellCount[i-1];
 
         // pass 2: fill flat array
-        std::vector<int> insertAt = cellStart; // copy to track insertion point
+        insertAt = cellStart; // copy to track insertion point
         for (int i = 0; i < n; i++) {
             int h = hash(cell_coords(particles[i].predicted));
             flat[insertAt[h]++] = i;
@@ -67,11 +81,14 @@ struct Grid {
     std::vector<int> neighbors(glm::vec3 pos, const std::vector<Particle>& particles) const {
         std::vector<int> result;
         glm::ivec3 center = cell_coords(pos);
+        std::unordered_set<int> visitedKeys;
 
         for (int dx = -1; dx <= 1; dx++){
             for (int dy = -1; dy <= 1; dy++){
                 for(int dz = -1; dz <= 1; dz++){
                     int key = hash(center + glm::ivec3(dx, dy, dz));
+                    if (visitedKeys.count(key)) continue; // skip duplicate keys
+                    visitedKeys.insert(key);
                     // iterate over all particles in this cell
                     for (int k = cellStart[key]; k < cellStart[key] + cellCount[key]; k++) {
                         int idx = flat[k];
@@ -84,7 +101,6 @@ struct Grid {
         }
         return result;
     }
-
 };
 
 #endif
