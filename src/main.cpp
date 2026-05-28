@@ -11,6 +11,9 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <iostream>
+#define STB_IMAGE_IMPLEMENTATION
+#include <stb_image.h>
+#include <filesystem>
 
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
@@ -49,6 +52,8 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
 void processInput(GLFWwindow* window);
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods);
+unsigned int loadTexture(char const * path);
+unsigned int loadCubemap(std::vector<std::string> faces);
 
 int main() {
   if (!glfwInit()) return -1;
@@ -86,6 +91,28 @@ int main() {
   glDisable(GL_CULL_FACE);
   glDisable(GL_DEPTH_TEST);
 
+  // load textures
+    // -------------
+  // std::vector<std::string> faces
+  // {
+  //   std::filesystem::path("textures/skybox/right.jpg").string(),
+  //   std::filesystem::path("textures/skybox/left.jpg").string(),
+  //   std::filesystem::path("textures/skybox/top.jpg").string(),
+  //   std::filesystem::path("textures/skybox/bottom.jpg").string(),
+  //   std::filesystem::path("textures/skybox/front.jpg").string(),
+  //   std::filesystem::path("textures/skybox/back.jpg").string(),
+  // };
+  std::vector<std::string> faces
+  {
+    std::filesystem::path("textures/red/right.png").string(),
+    std::filesystem::path("textures/red/left.png").string(),
+    std::filesystem::path("textures/red/top.png").string(),
+    std::filesystem::path("textures/red/bottom.png").string(),
+    std::filesystem::path("textures/red/front.png").string(),
+    std::filesystem::path("textures/red/back.png").string(),
+  };
+  unsigned int cubemapTexture = loadCubemap(faces);
+
   Shader shader("./shaders/splat.vs", "./shaders/splat.fs");
   SplatRenderer renderer;
 
@@ -100,6 +127,7 @@ int main() {
   float specular  = 0.5f;
   float roughness = 0.1f;
   float blur = 0.8f;
+  float envWeight = 0.0f;
 
   while (!glfwWindowShouldClose(window)) {
     float currentFrame = static_cast<float>(glfwGetTime());
@@ -136,6 +164,7 @@ int main() {
         ImGui::SliderFloat("Specular",  &specular,  0.0f, 1.0f, "%.3f");
         ImGui::SliderFloat("Roughness", &roughness, 0.01f, 1.0f, "%.3f");
         ImGui::SliderFloat("Blur", &blur, 0.0f, 1.0f, "%.3f");
+        ImGui::SliderFloat("Enviornment Map", &envWeight, 0.0f, 1.0f, "%.3f");
         ImGui::EndTabItem();
       }
 
@@ -210,11 +239,22 @@ int main() {
     vec2 focal = vec2((0.5f * (float)width) / tanHalfFovy, (0.5f * (float)height) / tanHalfFovy);
 
     shader.use();
+    shader.setInt("cubeMap", 0);
+    shader.setVec3("cameraPos", camera.Position);
+    shader.setMat4("projection", projection);
+    shader.setMat4("modelView", modelView);
+    shader.setVec2("focal", focal);
+    shader.setVec2("viewport", viewport);
+    // lighting uniforms
     shader.setVec3("lightDir", glm::normalize(glm::vec3(1.0f, 1.0f, 1.0f)));
     shader.setFloat("blur", blur);
     shader.setFloat("specular",  specular);
     shader.setFloat("roughness", roughness);
-    renderer.draw(shader, scene.particles, projection, modelView, focal, viewport);
+    shader.setFloat("envWeight", envWeight);
+
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTexture);
+    renderer.draw(scene.particles, modelView);
 
     ImGui::Render();
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
@@ -293,4 +333,98 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
 
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset) {
   camera.ProcessMouseScroll(static_cast<float>(yoffset));
+}
+
+// specific tutorial(s) referenced: https://learnopengl.com/Advanced-OpenGL/Cubemaps
+// https://learnopengl.com/code_viewer_gh.php?code=src/4.advanced_opengl/6.1.cubemaps_skybox/cubemaps_skybox.cpp
+// utility function for loading a 2D texture from file
+// ---------------------------------------------------
+unsigned int loadTexture(char const * path)
+{
+  unsigned int textureID;
+  glGenTextures(1, &textureID);
+
+  int width, height, nrComponents;
+  unsigned char *data = stbi_load(path, &width, &height, &nrComponents, 0);
+  if (data)
+  {
+    GLenum format;
+    if (nrComponents == 1)
+      format = GL_RED;
+    else if (nrComponents == 3)
+      format = GL_RGB;
+    else if (nrComponents == 4)
+      format = GL_RGBA;
+
+    glBindTexture(GL_TEXTURE_2D, textureID);
+    glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
+    glGenerateMipmap(GL_TEXTURE_2D);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+    stbi_image_free(data);
+  }
+  else
+  {
+    std::cout << "Texture failed to load at path: " << path << std::endl;
+    stbi_image_free(data);
+  }
+
+  return textureID;
+}
+
+// loads a cubemap texture from 6 individual texture faces
+// order:
+// +X (right)
+// -X (left)
+// +Y (top)
+// -Y (bottom)
+// +Z (front)
+// -Z (back)
+// -------------------------------------------------------
+unsigned int loadCubemap(std::vector<std::string> faces)
+{
+  unsigned int textureID;
+
+  glGenTextures(1, &textureID);
+  glBindTexture(GL_TEXTURE_CUBE_MAP, textureID);
+
+  int width, height, nrComponents;
+
+  for (unsigned int i = 0; i < faces.size(); i++)
+  {
+    unsigned char *data = stbi_load(faces[i].c_str(), &width, &height, &nrComponents, 0);
+
+    GLenum format;
+    if (nrComponents == 1)
+      format = GL_RED;
+    else if (nrComponents == 3)
+      format = GL_RGB;
+    else if (nrComponents == 4)
+      format = GL_RGBA;
+    if (data)
+    {
+      glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, format,
+                    width, height, 0, format, GL_UNSIGNED_BYTE, data);
+
+      stbi_image_free(data);
+    }
+    else
+    {
+      std::cout << "Cubemap texture failed to load at path: " << faces[i] << std::endl;
+
+      stbi_image_free(data);
+    }
+  }
+
+  glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+  glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+  glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+
+  return textureID;
 }

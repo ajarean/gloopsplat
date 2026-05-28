@@ -17,11 +17,13 @@ out vec3 vNormal;
 out vec2 fragPos;
 out float vDepth;
 out float vSurface;
+out vec3 vPosition;
 
 void main()
 {
   vColor = color;
   vNormal = normal;
+  vPosition = position;
   vec4 camPos = modelView * vec4(position, 1.0);
   if (camPos.z > -0.1) return;
   vDepth = -camPos.z;

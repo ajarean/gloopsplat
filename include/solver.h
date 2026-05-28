@@ -204,10 +204,10 @@ private:
 
         // avg w neighbors
         for(int i = 0; i < particles.size(); i++){
-            if (particles[i].surface < 0.5f) {
-                particles[i].normal = glm::vec3(0.0f, 1.0f, 0.0f);
-                continue;
-            }
+            // if (particles[i].surface < 0.5f) {
+                // particles[i].normal = glm::vec3(0.0f, 1.0f, 0.0f);
+                // continue;
+            // }
             glm::vec3 smoothed(0.0f);
             for(int j : neighborList[i]){
                 if (i == j) continue;
