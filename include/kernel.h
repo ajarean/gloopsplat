@@ -36,4 +36,18 @@ glm::vec3 spiky_grad(glm::vec3 r_vec, float h, float coefficient) {
     return coefficient * (diff*diff) * (r_vec / r);
 }
 
+// akinci et al 2013 eq 2 cohesion spline kernel
+float cohesion(float r, float h) {
+    float h9 = h*h*h*h*h*h*h*h*h;
+    float coeff = 32.0f / (M_PI * h9);
+    if (r > h) return 0.0f;
+    float hr = h - r;
+    if (2*r > h){ //attraction
+        return coeff * hr*hr*hr * r*r*r;
+    } 
+    else{ //repulsion
+        return coeff * (2.0f * hr*hr*hr * r*r*r - h*h*h*h*h*h/64.0f);
+    } 
+}
+
 #endif
