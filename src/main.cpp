@@ -24,6 +24,7 @@
 #include "shader.h"
 #include "particle.h"
 #include "scene.h"
+#include "skybox.h"
 
 using namespace glm;
 
@@ -52,8 +53,11 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
 void processInput(GLFWwindow* window);
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods);
-unsigned int loadTexture(char const * path);
-unsigned int loadCubemap(std::vector<std::string> faces);
+unsigned int loadCubemap(int cubemapIndex);
+
+std::vector<std::string> cubemaps = {
+  "skybox", "space"
+};
 
 int main() {
   if (!glfwInit()) return -1;
@@ -91,86 +95,8 @@ int main() {
   glDisable(GL_CULL_FACE);
   glDisable(GL_DEPTH_TEST);
 
-  // load textures
-    // -------------
-  // std::vector<std::string> faces
-  // {
-  //   std::filesystem::path("textures/skybox/right.jpg").string(),
-  //   std::filesystem::path("textures/skybox/left.jpg").string(),
-  //   std::filesystem::path("textures/skybox/top.jpg").string(),
-  //   std::filesystem::path("textures/skybox/bottom.jpg").string(),
-  //   std::filesystem::path("textures/skybox/front.jpg").string(),
-  //   std::filesystem::path("textures/skybox/back.jpg").string(),
-  // };
-  std::vector<std::string> faces
-  {
-    std::filesystem::path("textures/red/right.png").string(),
-    std::filesystem::path("textures/red/left.png").string(),
-    std::filesystem::path("textures/red/top.png").string(),
-    std::filesystem::path("textures/red/bottom.png").string(),
-    std::filesystem::path("textures/red/front.png").string(),
-    std::filesystem::path("textures/red/back.png").string(),
-  };
-  unsigned int cubemapTexture = loadCubemap(faces);
-
-  float skyboxVertices[] = {
-    // positions
-    -1.0f,  1.0f, -1.0f,
-    -1.0f, -1.0f, -1.0f,
-      1.0f, -1.0f, -1.0f,
-      1.0f, -1.0f, -1.0f,
-      1.0f,  1.0f, -1.0f,
-    -1.0f,  1.0f, -1.0f,
-
-    -1.0f, -1.0f,  1.0f,
-    -1.0f, -1.0f, -1.0f,
-    -1.0f,  1.0f, -1.0f,
-    -1.0f,  1.0f, -1.0f,
-    -1.0f,  1.0f,  1.0f,
-    -1.0f, -1.0f,  1.0f,
-
-      1.0f, -1.0f, -1.0f,
-      1.0f, -1.0f,  1.0f,
-      1.0f,  1.0f,  1.0f,
-      1.0f,  1.0f,  1.0f,
-      1.0f,  1.0f, -1.0f,
-      1.0f, -1.0f, -1.0f,
-
-    -1.0f, -1.0f,  1.0f,
-    -1.0f,  1.0f,  1.0f,
-      1.0f,  1.0f,  1.0f,
-      1.0f,  1.0f,  1.0f,
-      1.0f, -1.0f,  1.0f,
-    -1.0f, -1.0f,  1.0f,
-
-    -1.0f,  1.0f, -1.0f,
-      1.0f,  1.0f, -1.0f,
-      1.0f,  1.0f,  1.0f,
-      1.0f,  1.0f,  1.0f,
-    -1.0f,  1.0f,  1.0f,
-    -1.0f,  1.0f, -1.0f,
-
-    -1.0f, -1.0f, -1.0f,
-    -1.0f, -1.0f,  1.0f,
-      1.0f, -1.0f, -1.0f,
-      1.0f, -1.0f, -1.0f,
-    -1.0f, -1.0f,  1.0f,
-      1.0f, -1.0f,  1.0f
-  };
-  // skybox VAO
-  unsigned int skyboxVAO, skyboxVBO;
-  glGenVertexArrays(1, &skyboxVAO);
-  glGenBuffers(1, &skyboxVBO);
-  glBindVertexArray(skyboxVAO);
-  glBindBuffer(GL_ARRAY_BUFFER, skyboxVBO);
-  glBufferData(GL_ARRAY_BUFFER, sizeof(skyboxVertices), &skyboxVertices, GL_STATIC_DRAW);
-  glEnableVertexAttribArray(0);
-  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-
-  Shader skyboxShader("./shaders/skybox.vs", "./shaders/skybox.fs");
-  skyboxShader.use();
-  skyboxShader.setInt("skybox", 0);
-  bool showSkybox = true;
+  int cubemapIndex = 0;
+  unsigned int cubemapTexture = loadCubemap(cubemapIndex);
 
   Shader shader("./shaders/splat.vs", "./shaders/splat.fs");
   SplatRenderer renderer;
@@ -183,10 +109,13 @@ int main() {
   Block block;
   scene.addBlock(block);
 
+  Skybox skybox;
+
   float specular  = 0.5f;
   float roughness = 0.1f;
   float blur = 0.8f;
   int shaderType = 0;
+  bool showSkybox = true;
 
   while (!glfwWindowShouldClose(window)) {
     float currentFrame = static_cast<float>(glfwGetTime());
@@ -218,19 +147,36 @@ int main() {
       }
 
       if (ImGui::BeginTabItem("Shading")) {
+        ImGui::Checkbox("Skybox", &showSkybox);
+
+        const char* curr = cubemaps[cubemapIndex].c_str();
+        if (ImGui::BeginCombo("Cubemap", curr)) {
+          for (int i = 0; i < cubemaps.size(); i++) {
+            if (ImGui::Selectable(cubemaps[i].c_str(), cubemapIndex == i)) {
+              cubemapIndex = i;
+              glDeleteTextures(1, &cubemapTexture);
+              cubemapTexture = loadCubemap(cubemapIndex);
+            }
+            if (cubemapIndex == i) {
+              ImGui::SetItemDefaultFocus();
+            }
+          }
+          ImGui::EndCombo();
+        }
+        ImGui::Text("Shading Style");
         if (ImGui::RadioButton("RGBA", shaderType == 0)) shaderType = 0;
         ImGui::SameLine();
         if (ImGui::RadioButton("Env Map", shaderType == 1)) shaderType = 1;
         ImGui::SameLine();
         if (ImGui::RadioButton("Fresnel", shaderType == 2)) shaderType = 2;
-        if (shaderType == 0) {
+        if (shaderType != 1) {
           ImGui::ColorPicker3("Color", &block.color[0]);
-          ImGui::SliderFloat("Opacity", &block.color[3], 0.01f, 1.0f);
         }
+        ImGui::SliderFloat("Opacity", &block.color[3], 0.01f, 1.0f);
         ImGui::SliderFloat("Specular",  &specular,  0.0f, 1.0f, "%.3f");
         ImGui::SliderFloat("Roughness", &roughness, 0.01f, 1.0f, "%.3f");
         ImGui::SliderFloat("Blur", &blur, 0.0f, 1.0f, "%.3f");
-        ImGui::Checkbox("Skybox", &showSkybox);
+        
         ImGui::EndTabItem();
       }
 
@@ -306,15 +252,8 @@ int main() {
 
     // draw skybox
     if (showSkybox) {
-      skyboxShader.use();
       mat4 view = glm::mat4(glm::mat3(camera.GetViewMatrix()));
-      skyboxShader.setMat4("view", view);
-      skyboxShader.setMat4("projection", projection);
-      glBindVertexArray(skyboxVAO);
-      glActiveTexture(GL_TEXTURE0);
-      glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTexture);
-      glDrawArrays(GL_TRIANGLES, 0, 36);
-      glBindVertexArray(0);
+      skybox.draw(view, projection, cubemapTexture);
     }
 
     shader.use();
@@ -416,44 +355,6 @@ void scroll_callback(GLFWwindow* window, double xoffset, double yoffset) {
 
 // specific tutorial(s) referenced: https://learnopengl.com/Advanced-OpenGL/Cubemaps
 // https://learnopengl.com/code_viewer_gh.php?code=src/4.advanced_opengl/6.1.cubemaps_skybox/cubemaps_skybox.cpp
-// utility function for loading a 2D texture from file
-// ---------------------------------------------------
-unsigned int loadTexture(char const * path)
-{
-  unsigned int textureID;
-  glGenTextures(1, &textureID);
-
-  int width, height, nrComponents;
-  unsigned char *data = stbi_load(path, &width, &height, &nrComponents, 0);
-  if (data)
-  {
-    GLenum format;
-    if (nrComponents == 1)
-      format = GL_RED;
-    else if (nrComponents == 3)
-      format = GL_RGB;
-    else if (nrComponents == 4)
-      format = GL_RGBA;
-
-    glBindTexture(GL_TEXTURE_2D, textureID);
-    glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
-    glGenerateMipmap(GL_TEXTURE_2D);
-
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-    stbi_image_free(data);
-  }
-  else
-  {
-    std::cout << "Texture failed to load at path: " << path << std::endl;
-    stbi_image_free(data);
-  }
-
-  return textureID;
-}
 
 // loads a cubemap texture from 6 individual texture faces
 // order:
@@ -464,8 +365,20 @@ unsigned int loadTexture(char const * path)
 // +Z (front)
 // -Z (back)
 // -------------------------------------------------------
-unsigned int loadCubemap(std::vector<std::string> faces)
+// unsigned int loadCubemap(std::vector<std::string> faces)
+unsigned int loadCubemap(int cubemapIndex)
 {
+  std::string folder = "textures/" + cubemaps[cubemapIndex];
+
+  std::vector<std::string> faces = {
+    (std::filesystem::path(folder + "/right.jpg")).string(),
+    (std::filesystem::path(folder + "/left.jpg")).string(),
+    (std::filesystem::path(folder + "/top.jpg")).string(),
+    (std::filesystem::path(folder + "/bottom.jpg")).string(),
+    (std::filesystem::path(folder + "/front.jpg")).string(),
+    (std::filesystem::path(folder + "/back.jpg")).string(),
+  };
+
   unsigned int textureID;
 
   glGenTextures(1, &textureID);
