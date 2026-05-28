@@ -34,11 +34,16 @@ add_executable(gloopsplat
 
 target_include_directories(gloopsplat PUBLIC include include/imgui)
 
-target_link_libraries(gloopsplat PRIVATE glfw glm::glm OpenGL::GL)
-target_link_libraries(gloopsplat PRIVATE OpenMP::OpenMP_CXX)
+target_link_libraries(gloopsplat PRIVATE glfw glm::glm OpenGL::GL OpenMP::OpenMP_CXX)
 
 add_custom_command(TARGET gloopsplat POST_BUILD
   COMMAND ${CMAKE_COMMAND} -E copy_directory
     "${CMAKE_CURRENT_SOURCE_DIR}/shaders"
     "$<TARGET_FILE_DIR:gloopsplat>/shaders"
+)
+
+add_custom_command(TARGET gloopsplat POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -E copy_directory
+    "${CMAKE_CURRENT_SOURCE_DIR}/textures"
+    "$<TARGET_FILE_DIR:gloopsplat>/textures"
 )
