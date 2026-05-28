@@ -14,6 +14,7 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 #include <filesystem>
+#include <chrono>
 
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
@@ -296,11 +297,17 @@ int main() {
 
       std::vector<std::vector<Particle>> frames(TOTAL_FRAMES);
       std::cout << "Presimulating frames...\n";
+      
+      auto simStart = std::chrono::high_resolution_clock::now();
+
       for (int f = 0; f < TOTAL_FRAMES; f++) {
           scene.update(FRAME_DT);
           frames[f] = scene.particles; 
           if (f % 30 == 0) std::cout << "  frame " << f << "/" << TOTAL_FRAMES << "\n";
       }
+
+      auto simEnd = std::chrono::high_resolution_clock::now();
+      float simMs = std::chrono::duration<float>(simEnd - simStart).count();
 
       std::vector<unsigned char> pixels(OUT_W * OUT_H * 3);
 
@@ -313,6 +320,8 @@ int main() {
       float tanHalfFovy = tan(radians(camera.Zoom) * 0.5f);
       vec2 focal = vec2((0.5f * OUT_W) / tanHalfFovy, (0.5f * OUT_H) / tanHalfFovy);
       vec2 outViewport = vec2(OUT_W, OUT_H);
+
+      auto renderStart = std::chrono::high_resolution_clock::now();
 
       for (int f = 0; f < TOTAL_FRAMES; f++) {
           glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
@@ -358,13 +367,20 @@ int main() {
           fwrite(pixels.data(), 1, pixels.size(), ffmpeg);
 
           if (f % 30 == 0) std::cout << "  rendered " << f << "/" << TOTAL_FRAMES << "\n";
-      }
 
+        }
+        
+      auto renderEnd = std::chrono::high_resolution_clock::now();
+      float renderMs = std::chrono::duration<float>(renderEnd - renderStart).count();
+      
       glBindFramebuffer(GL_FRAMEBUFFER, 0);
       glViewport(0, 0, width, height);
       _pclose(ffmpeg);
       std::cout << "Done! output.mp4 written.\n";
 
+      std::cout << "Simulation done in " << simMs << "s\n";
+      std::cout << "Rendering done in " << renderMs << "s\n";
+      std::cout << "Total: " << (simMs + renderMs) << "s\n";
       // cleanup
       glDeleteFramebuffers(1, &fbo);
       glDeleteTextures(1, &colorTex);
