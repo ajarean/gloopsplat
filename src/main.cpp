@@ -127,7 +127,7 @@ int main() {
   float specular  = 0.5f;
   float roughness = 0.1f;
   float blur = 0.8f;
-  float envWeight = 0.0f;
+  int shaderType = 0;
 
   while (!glfwWindowShouldClose(window)) {
     float currentFrame = static_cast<float>(glfwGetTime());
@@ -159,12 +159,18 @@ int main() {
       }
 
       if (ImGui::BeginTabItem("Shading")) {
-        ImGui::ColorPicker3("Color", &block.color[0]);
-        ImGui::SliderFloat("Opacity", &block.color[3], 0.01f, 1.0f);
+        if (ImGui::RadioButton("RGBA", shaderType == 0)) shaderType = 0;
+        ImGui::SameLine();
+        if (ImGui::RadioButton("Env Map", shaderType == 1)) shaderType = 1;
+        ImGui::SameLine();
+        if (ImGui::RadioButton("Fresnel", shaderType == 2)) shaderType = 2;
+        if (shaderType == 0) {
+          ImGui::ColorPicker3("Color", &block.color[0]);
+          ImGui::SliderFloat("Opacity", &block.color[3], 0.01f, 1.0f);
+        }
         ImGui::SliderFloat("Specular",  &specular,  0.0f, 1.0f, "%.3f");
         ImGui::SliderFloat("Roughness", &roughness, 0.01f, 1.0f, "%.3f");
         ImGui::SliderFloat("Blur", &blur, 0.0f, 1.0f, "%.3f");
-        ImGui::SliderFloat("Enviornment Map", &envWeight, 0.0f, 1.0f, "%.3f");
         ImGui::EndTabItem();
       }
 
@@ -250,7 +256,7 @@ int main() {
     shader.setFloat("blur", blur);
     shader.setFloat("specular",  specular);
     shader.setFloat("roughness", roughness);
-    shader.setFloat("envWeight", envWeight);
+    shader.setInt("type", shaderType);
 
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTexture);
