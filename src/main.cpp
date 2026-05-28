@@ -102,7 +102,7 @@ int main() {
   SplatRenderer renderer;
 
   Scene scene(0.4f, 9.8f, 68.0f, 100.0f);
-  bool sphereEnabled = true;
+  bool sphereEnabled = false;
   glm::vec3 sphereCenter(0.0f, 2.0f, 0.0f);
   float sphereRadius = 1.0f;
 
@@ -143,6 +143,14 @@ int main() {
         ImGui::SliderInt("Nz", &block.nz, 1, 20);
         ImGui::SliderFloat("Spacing", &block.spacing, 0.05f, 0.5f, "%.3f");
         ImGui::SliderFloat("Radius",  &block.radius,  0.05f, 0.5f, "%.3f");
+        if (ImGui::Button("Add New")) {
+          scene.addBlock(block);
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Clear")) {
+          scene.particles.clear();
+        }
+        ImGui::Text("Particle Count: %d", scene.particles.size());
         ImGui::EndTabItem();
       }
 
