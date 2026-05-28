@@ -1,6 +1,9 @@
 # gloopsplat
 Fluid Animation with 3D Gaussian Splat (3DGS) Rendering and Position-Based Gaussian Kernel Simulation
 
+## Controls
+- P: Record a 10-second, 30 fps, 720p video of the simulation with the current parameters
+
 ## Resources
 - Image Loader Library: https://github.com/nothings/stb
 - Skyboxes:
