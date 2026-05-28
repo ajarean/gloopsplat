@@ -54,7 +54,7 @@ SplatRenderer::SplatRenderer() {
   glBindVertexArray(0);
 
   glBindBuffer(GL_ARRAY_BUFFER, splatVBO);
-  glBufferData(GL_ARRAY_BUFFER, 100000 * sizeof(SplatData), nullptr, GL_DYNAMIC_DRAW);
+  glBufferData(GL_ARRAY_BUFFER, 300000 * sizeof(SplatData), nullptr, GL_DYNAMIC_DRAW);
 }
 
 void SplatRenderer::draw(std::vector<Particle> &particles, glm::mat4 &modelView) {
