@@ -5,9 +5,8 @@
 #include <math.h>
 #include <glm/glm.hpp>
 
-// since h should stay constant(?), just precompute the coefficient and pass it in
 // SPH muller et al eq 20
-float poly6(float r, float h, float coefficient){
+inline float poly6(float r, float h, float coefficient){
 	if (r>h) return 0.0;
 	float h2 = h*h;
 	float r2 = r*r;
@@ -20,7 +19,7 @@ float poly6(float r, float h, float coefficient){
 // 15/(pi*h^6) * (h-r)^3
 // so gradient w.r.t. r would be:
 // -45/(pi*h^6) * (h-r)^2
-glm::vec3 spiky_grad(glm::vec3 r_vec, float h, float coefficient) {
+inline glm::vec3 spiky_grad(glm::vec3 r_vec, float h, float coefficient) {
 	float r = glm::length(r_vec);
 	// if (r > h || r < 1e-6f) return glm::vec3(0.0f);
 	// float coefficient = -45.0f / (M_PI * h*h*h*h*h*h); //h^6
@@ -37,7 +36,7 @@ glm::vec3 spiky_grad(glm::vec3 r_vec, float h, float coefficient) {
 }
 
 // akinci et al 2013 eq 2 cohesion spline kernel
-float cohesion(float r, float h) {
+inline float cohesion(float r, float h) {
 	float h9 = h*h*h*h*h*h*h*h*h;
 	float coeff = 32.0f / (M_PI * h9);
 	if (r > h) return 0.0f;

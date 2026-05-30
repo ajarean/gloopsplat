@@ -1,7 +1,6 @@
 #define _USE_MATH_DEFINES
 
 #include "solver.h"
-#include "kernel.h"
 #include <cmath>
 
 Solver::Solver(float h, float gravity, float rho0, float epsilon,
