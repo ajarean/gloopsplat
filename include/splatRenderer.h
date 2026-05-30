@@ -9,15 +9,15 @@
 
 class SplatRenderer {
 public:
-  SplatRenderer();
-  ~SplatRenderer();
-  void draw(std::vector<Particle> &particles, glm::mat4 &modelView);
+	SplatRenderer();
+	~SplatRenderer();
+	void draw(std::vector<Particle> &particles, glm::mat4 &modelView);
 private:
-  unsigned int VAO, VBO, EBO, splatVBO;
-  std::vector<unsigned int> indices;
-  std::vector<SplatData> splatBuffer;
-  void depthSort(const std::vector<Particle>& particles, const glm::mat4& modelView);
-  void updateBuffers(const std::vector<Particle>& particles);
+	unsigned int VAO, VBO, EBO, splatVBO;
+	std::vector<unsigned int> indices;
+	std::vector<SplatData> splatBuffer;
+	void depthSort(const std::vector<Particle>& particles, const glm::mat4& modelView);
+	void updateBuffers(const std::vector<Particle>& particles);
 };
 
 #endif
