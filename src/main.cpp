@@ -61,7 +61,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 unsigned int loadCubemap(int cubemapIndex);
 
 std::vector<std::string> cubemaps = {
-  "skybox", "space", "mountain", "ting"
+  "skybox", "space", "mountain"
 };
 
 int main() {
