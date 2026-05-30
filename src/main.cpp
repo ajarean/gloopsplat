@@ -35,10 +35,7 @@ int height = 1080;
 glm::vec2 viewport = glm::vec2(width, height);
 
 // camera
-// Camera camera(vec3(0.0f, 1.0f, 5.0f));
-
 Camera camera(vec3(0.0f, 12.0f, 30.0f), glm::vec3(0,1,0), -90.0f, -15.0f);
-
 float lastX = width / 2.0f;
 float lastY = height / 2.0f;
 bool firstMouse = true;
@@ -106,7 +103,7 @@ int main() {
   Shader shader("./shaders/splat.vs", "./shaders/splat.fs");
   SplatRenderer renderer;
 
-  Scene scene(0.4f, 9.8f, 68.0f, 100.0f);
+  Scene scene(0.4f, 9.8f);
   bool sphereEnabled = false;
   glm::vec3 sphereCenter(0.0f, 2.0f, 0.0f);
   float sphereRadius = 1.0f;
@@ -210,6 +207,9 @@ int main() {
         ImGui::SeparatorText("XSPH");
         ImGui::SliderFloat("c", &scene.solver.xsph_c, 0.0f, 0.05f, "%.4f");
 
+        ImGui::SeparatorText("Surface Tension");
+        ImGui::SliderFloat("Gamma", &scene.solver.gamma_st, 0.0f, 1.0f, "%.4f");
+
         ImGui::SliderInt("Surface threshold", &scene.solver.surfaceThreshold, 1, 100);
 
         if (reloadKernels) { scene.solver.computeKernels(); }
@@ -262,9 +262,6 @@ int main() {
       {
         isPaused = false;
       }
-      
-      // scene.particles.clear();
-      // scene.addBlock(block);
 
       const int OUT_W = 1280;
       const int OUT_H = 720;
@@ -293,7 +290,6 @@ int main() {
         "-i pipe:0 -c:v libx264 -pix_fmt yuv420p output.mp4";
 
       // https://stackoverflow.com/questions/34511312/how-to-encode-a-video-from-several-images-generated-in-a-c-program-without-wri
-      
       FILE* ffmpeg = _popen(ffmpegCmd.c_str(), "wb"); 
       if (!ffmpeg) {
           std::cout << "Failed to open ffmpeg pipe\n";

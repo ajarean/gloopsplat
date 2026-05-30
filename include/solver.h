@@ -235,8 +235,7 @@ private:
 
     // Akinci et al 2013 eq 5: combined surface tension force
     // F_st = K_ij * (F_cohesion + F_curvature)
-    void applySurfaceTension(std::vector<Particle>& particles, 
-                            const std::vector<std::vector<int>>& neighborList, float dt) {
+    void applySurfaceTension(std::vector<Particle>& particles, const std::vector<std::vector<int>>& neighborList, float dt) {
         std::vector<glm::vec3> forces(particles.size(), glm::vec3(0.0f));
 
         // recompute densities per particl
