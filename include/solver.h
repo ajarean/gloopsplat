@@ -3,7 +3,8 @@
 
 #include <vector>
 #include "particle.h"
-#include "grid.h"
+// #include "grid.h"
+#include "static_grid.h"
 #include "kernel.h"
 #include "collider.h"
 
@@ -13,7 +14,8 @@ struct Solver {
 	float rho0; // pbf muller et al eq1: C_i = rho_i/rho_0 - 1
 	float epsilon;
 	int iterations;
-	Grid grid;
+	// Grid grid;
+	StaticGrid grid;
 	int surfaceThreshold = 20; // max number of neighbors to count as surface
 
 	float floor_y = 0.0f;
@@ -34,21 +36,22 @@ struct Solver {
 	float gamma_st=0.1f;  // surface tension coefficient, Akinci eq. 1 -- paper uses 1.0 for water
 	float st_mass;   // particle mass used in surface tension (eq. 1 uses m_i * m_j)
 
-  std::vector<std::vector<int>> neighborList;
+	std::vector<std::vector<int>> neighborList;
 
 	Solver(float h = 1.0f, float gravity = 9.8f, float rho0 = 100.0f, float epsilon = 100.0f,
 		int iterations = 3, float scorr_k = 0.0002f, float scorr_dq = 0.1f, int scorr_n = 4, float xsph_c = 0.005f);
 
 	void update(std::vector<Particle>& particles, std::vector<Collider*>& colliders, float dt);
 	void computeKernels();
+	void computeBounds();
 
-  private:
+	private:
 	void applyForcesAndPredict(std::vector<Particle>& particles, float dt);
-  void buildNeighborList(std::vector<Particle> &particles);
+	void buildNeighborList(std::vector<Particle> &particles);
 	void updateVelocities(std::vector<Particle>& particles, float dt);
 	void calculateLambda(std::vector<Particle>& particles);
 	void updatePositions(std::vector<Particle>& particles);
-  void detectSurfaces(std::vector<Particle>& particles);
+	void detectSurfaces(std::vector<Particle>& particles);
 	void applyBoundaryConditions(std::vector<Particle>& particles);
 	void applyCollisions(std::vector<Particle>& particles, std::vector<Collider*>& colliders);
 	void applyViscosity(std::vector<Particle>& particles);

@@ -8,6 +8,11 @@ Solver::Solver(float h, float gravity, float rho0, float epsilon,
 	: h(h), gravity(gravity), rho0(rho0), epsilon(epsilon), iterations(iterations),
 	scorr_k(scorr_k), scorr_dq(scorr_dq), scorr_n(scorr_n), grid(h), xsph_c(xsph_c) {
 	computeKernels();
+  computeBounds();
+}
+
+void Solver::computeBounds() {
+  grid.computeBounds(glm::vec3(-wall_x, floor_y, -wall_z), glm::vec3(wall_x, 10.0f, wall_z));
 }
 
 void Solver::update(std::vector<Particle>& particles, std::vector<Collider*>& colliders, float dt) {
@@ -135,6 +140,9 @@ void Solver::detectSurfaces(std::vector<Particle>& particles) {
 void Solver::applyBoundaryConditions(std::vector<Particle>& particles) {
 	// axis aligned box for now; can replace with something more complex if needed
 	for (auto& p : particles) {
+    if (p.predicted.y > 10.0f - p.radius) {
+      p.predicted.y = 10.0f - p.radius;
+    }
 		if (p.predicted.y < floor_y + p.radius) {
 			p.predicted.y = floor_y + p.radius;
 		}

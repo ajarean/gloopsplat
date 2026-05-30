@@ -21,7 +21,7 @@
 #include "imgui_impl_opengl3.h"
 
 #include "camera.h"
-#include "splatRenderer.h"
+#include "renderer.h"
 #include "shader.h"
 #include "particle.h"
 #include "scene.h"
@@ -217,10 +217,14 @@ int main() {
 			}
 
 			if (ImGui::BeginTabItem("Colliders")) {
+        bool boundsChanged = false;
 				ImGui::Text("Boundaries");
-				ImGui::SliderFloat("Floor Y", &scene.solver.floor_y, -5.0f, 5.0f, "%.3f");
-				ImGui::SliderFloat("Wall X", &scene.solver.wall_x, 0.5f, 10.0f, "%.3f");
-				ImGui::SliderFloat("Wall Z", &scene.solver.wall_z, 0.5f, 10.0f, "%.3f");
+				boundsChanged |= ImGui::SliderFloat("Floor Y", &scene.solver.floor_y, -5.0f, 5.0f, "%.3f");
+				boundsChanged |= ImGui::SliderFloat("Wall X", &scene.solver.wall_x, 0.5f, 10.0f, "%.3f");
+				boundsChanged |= ImGui::SliderFloat("Wall Z", &scene.solver.wall_z, 0.5f, 10.0f, "%.3f");
+        if (boundsChanged) {
+          scene.solver.computeBounds();
+        }
 				ImGui::SeparatorText("Sphere Colliders");
 				bool sphereChanged = false;
 				sphereChanged |= ImGui::Checkbox("Sphere", &sphereEnabled);

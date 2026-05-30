@@ -1,4 +1,4 @@
-#include "splatRenderer.h"
+#include "renderer.h"
 #include <algorithm>
 
 SplatRenderer::SplatRenderer() {
