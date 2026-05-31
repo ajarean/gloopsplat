@@ -10,12 +10,14 @@ glm::ivec3 StaticGrid::cell_coords(glm::vec3 pos) const {
 
 int StaticGrid::index(glm::ivec3 c) const {
 	glm::ivec3 pos = c - min; // convert to grid space
-	return (pos.z * dims.x + dims.y) + (pos.y * dims.x) + pos.x;
+	return (pos.z * dims.x * dims.y) + (pos.y * dims.x) + pos.x;
 }
 
 void StaticGrid::computeBounds(glm::vec3 minBounds, glm::vec3 maxBounds) {
-	min = cell_coords(minBounds);
-	max = cell_coords(maxBounds);
+  glm::ivec3 padding = glm::ivec3(1);
+  // glm::ivec3 padding = glm::ivec3(0);
+	min = cell_coords(minBounds) - padding;
+	max = cell_coords(maxBounds) + padding;
 	dims = max - min + glm::ivec3(1);
 	tableSize = dims.x * dims.y * dims.z;
 	cellCount.resize(tableSize);

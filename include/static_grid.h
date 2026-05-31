@@ -21,7 +21,7 @@ struct StaticGrid {
 	glm::ivec3 max = glm::ivec3(0);
   glm::ivec3 dims = glm::ivec3(0);
 
-	StaticGrid(float h) : h(h) {};
+	StaticGrid(float h = 0.0f) : h(h) {};
 
 	glm::ivec3 cell_coords(glm::vec3 pos) const;
 	int index(glm::ivec3 c) const;

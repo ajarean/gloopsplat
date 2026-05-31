@@ -3,10 +3,12 @@
 
 #include <vector>
 #include "particle.h"
-// #include "grid.h"
+#include "grid.h"
 #include "static_grid.h"
 #include "kernel.h"
 #include "collider.h"
+
+#define USE_STATIC_GRID 1
 
 struct Solver {
 	float h;
@@ -14,8 +16,11 @@ struct Solver {
 	float rho0; // pbf muller et al eq1: C_i = rho_i/rho_0 - 1
 	float epsilon;
 	int iterations;
-	// Grid grid;
-	StaticGrid grid;
+	#if USE_STATIC_GRID
+		StaticGrid grid;
+	#else
+		Grid grid;
+	#endif
 	int surfaceThreshold = 20; // max number of neighbors to count as surface
 
 	float floor_y = 0.0f;

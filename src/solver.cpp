@@ -3,10 +3,16 @@
 #include "solver.h"
 #include <cmath>
 
+#include <chrono>
+#include <iostream>
+
+static const bool useStaticGrid = true;
+
 Solver::Solver(float h, float gravity, float rho0, float epsilon,
 	int iterations, float scorr_k, float scorr_dq, int scorr_n, float xsph_c)
 	: h(h), gravity(gravity), rho0(rho0), epsilon(epsilon), iterations(iterations),
-	scorr_k(scorr_k), scorr_dq(scorr_dq), scorr_n(scorr_n), grid(h), xsph_c(xsph_c) {
+	scorr_k(scorr_k), scorr_dq(scorr_dq), scorr_n(scorr_n), xsph_c(xsph_c), grid(h)
+{
 	computeKernels();
   computeBounds();
 }
@@ -51,13 +57,21 @@ void Solver::applyForcesAndPredict(std::vector<Particle>& particles, float dt) {
 }
 
 void Solver::buildNeighborList(std::vector<Particle> &particles) {
+	auto t1 = std::chrono::high_resolution_clock::now();
   grid.build(particles);
+	auto t2 = std::chrono::high_resolution_clock::now();
 	neighborList.resize(particles.size());
 
 	#pragma omp parallel for schedule(dynamic)
 	for (int i = 0; i < particles.size(); i++) {
 		neighborList[i] = grid.neighbors(particles[i].predicted, particles);
 	}
+	auto t3 = std::chrono::high_resolution_clock::now();
+	using ms_double = std::chrono::duration<double, std::milli>;
+	ms_double d1 = t2 - t1;
+	ms_double d2 = t3 - t2;
+	ms_double t = t3 - t1;
+	std::cout << "Total time: " << t << "; Grid: " << d1 << "; Neighbor: " << d2 << "\n";
 }
 
 // pbf muller et al algo1 lines 21-23
@@ -103,7 +117,6 @@ void Solver::calculateLambda(std::vector<Particle>& particles) {
 // eq12; algo 1 lines 13, 17
 // delta p_i = 1/rho0 * Sigma_j((lambda_i + lambda_j) * gradW(p_i - p_j, h))
 void Solver::updatePositions(std::vector<Particle>& particles) {
-	// algo 1 line 13
 	std::vector<glm::vec3> deltas(particles.size(), glm::vec3(0.0f));
 	#pragma omp parallel for schedule(dynamic)
 	for (int i = 0; i < particles.size(); i++) {
@@ -123,7 +136,6 @@ void Solver::updatePositions(std::vector<Particle>& particles) {
 		deltas[i] /= rho0;
 	}
 
-	// algo 1 line 17
 	for (int i = 0; i < particles.size(); i++) {
 		particles[i].predicted += deltas[i];
 	}
@@ -162,6 +174,7 @@ void Solver::applyCollisions(std::vector<Particle>& particles, std::vector<Colli
 }
 
 void Solver::applyViscosity(std::vector<Particle>& particles) {
+	if (xsph_c == 0) return;
 	std::vector<glm::vec3> deltas(particles.size(), glm::vec3(0.0f));
 
 	#pragma omp parallel for schedule(dynamic)
@@ -214,6 +227,7 @@ void Solver::computeNormals(std::vector<Particle>& particles) {
 // Akinci et al 2013 eq 5: combined surface tension force
 // F_st = K_ij * (F_cohesion + F_curvature)
 void Solver::applySurfaceTension(std::vector<Particle>& particles, float dt) {
+	if (gamma_st == 0) return;
 	std::vector<glm::vec3> forces(particles.size(), glm::vec3(0.0f));
 
 	// recompute densities per particl

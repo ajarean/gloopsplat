@@ -25,7 +25,7 @@ struct Grid {
 	std::vector<int> flat; // particle indices grouped by cell
 	std::vector<int> insertAt;
 
-	Grid(float h){
+	Grid(float h = 0.0f){
 		this->h = h;
 	}
 	
@@ -109,6 +109,10 @@ struct Grid {
 		}
 		return result;
 	}
+
+  void computeBounds(glm::vec3 minBounds, glm::vec3 maxBounds) {
+    // no-op, this is just to compare with static_grid
+  }
 };
 
 #endif
