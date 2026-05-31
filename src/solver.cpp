@@ -207,18 +207,6 @@ void Solver::applySurfaceTension(std::vector<Particle>& particles, float dt) {
 	if (gamma_st == 0) return;
 	std::vector<glm::vec3> forces(particles.size(), glm::vec3(0.0f));
 
-	// recompute densities per particl
-	std::vector<float> densities(particles.size(), 0.0f);
-	// TODO use particle.density
-	#pragma omp parallel for schedule(dynamic)
-	for (int i = 0; i < (int)particles.size(); i++) {
-		for (int j : neighborList[i]) {
-			float r = glm::length(particles[i].position - particles[j].position);
-			// densities[i] += poly6(r, h, poly6_coeff);
-			densities[i] += poly6(r, h, poly6_coeff);
-		}
-	}
-
 	#pragma omp parallel for schedule(dynamic)
 	for (int i = 0; i < (int)particles.size(); i++) {
 		Particle& p_i = particles[i];
@@ -232,7 +220,7 @@ void Solver::applySurfaceTension(std::vector<Particle>& particles, float dt) {
 			if (dist < 1e-6f) continue;
 
 			// eq4
-			float K_ij = 2.0f * rho0 / (densities[i] + densities[j]);
+			float K_ij = 2.0f * rho0 / (p_i.density + p_j.density);
 
 			// eq1
 			float C = cohesion(dist, h);
