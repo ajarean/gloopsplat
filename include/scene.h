@@ -19,8 +19,7 @@ struct Scene {
 	std::vector<Collider*> colliders;
 	Solver solver;
 
-	Scene(float h = 0.3f, float gravity = 9.8f, float rho0 = 100.0f, float epsilon = 100.0f) 
-		: solver(h, gravity, rho0, epsilon) {}
+	Scene() : solver() {}
 
 	void addParticle(glm::vec3 position, float mass, float radius, glm::vec4 color) {
 		particles.emplace_back(position, mass, radius, color);
@@ -33,6 +32,7 @@ struct Scene {
 	void update(float dt) {
 		solver.update(particles, colliders, dt);
 	}
+
 	void addBlock(glm::vec3 origin, int nx, int ny, int nz, float spacing,
 				float mass, float radius, glm::vec4 color) {
 		for (int x = 0; x < nx; x++)
@@ -42,6 +42,7 @@ struct Scene {
 			addParticle(pos, mass, radius, color);
 		}
 	}
+
 	void addBlock(Block block) {
 		addBlock(block.origin, block.nx, block.ny, block.nz, block.spacing, block.mass, block.radius, block.color);
 	}

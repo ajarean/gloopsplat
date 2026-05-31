@@ -8,7 +8,8 @@
 #include <cmath>
 
 // Static grid approach to avoid reallocating hash table
-struct StaticGrid {
+class StaticGrid {
+public:
 	float h; //smoothing radius == cell size
 
 	int tableSize;
@@ -23,11 +24,13 @@ struct StaticGrid {
 
 	StaticGrid(float h = 0.0f) : h(h) {};
 
-	glm::ivec3 cell_coords(glm::vec3 pos) const;
-	int index(glm::ivec3 c) const;
 	void computeBounds(glm::vec3 minBounds, glm::vec3 maxBounds);
 	void build(const std::vector<Particle>& particles);
 	std::vector<int> neighbors(glm::vec3 pos, const std::vector<Particle>& particles) const;
+
+private:
+	glm::ivec3 cell_coords(glm::vec3 pos) const;
+	int index(glm::ivec3 c) const;
 };
 
 #endif

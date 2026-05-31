@@ -10,9 +10,11 @@
 
 #define USE_STATIC_GRID 1
 
-struct Solver {
+class Solver {
+public:
 	float h;
 	float gravity;
+	glm::vec3 g_dir = glm::vec3(0,-1.0f,0);
 	float rho0; // pbf muller et al eq1: C_i = rho_i/rho_0 - 1
 	float epsilon;
 	int iterations;
@@ -43,14 +45,14 @@ struct Solver {
 
 	std::vector<std::vector<int>> neighborList;
 
-	Solver(float h = 1.0f, float gravity = 9.8f, float rho0 = 100.0f, float epsilon = 100.0f,
+	Solver(float h = 0.4f, float gravity = 9.8f, float rho0 = 60.0f, float epsilon = 100.0f,
 		int iterations = 3, float scorr_k = 0.0002f, float scorr_dq = 0.1f, int scorr_n = 4, float xsph_c = 0.005f);
 
 	void update(std::vector<Particle>& particles, std::vector<Collider*>& colliders, float dt);
 	void computeKernels();
 	void computeBounds();
 
-	private:
+private:
 	void applyForcesAndPredict(std::vector<Particle>& particles, float dt);
 	void buildNeighborList(std::vector<Particle> &particles);
 	void updateVelocities(std::vector<Particle>& particles, float dt);

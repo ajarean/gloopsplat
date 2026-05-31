@@ -15,7 +15,11 @@ Solver::Solver(float h, float gravity, float rho0, float epsilon,
 }
 
 void Solver::computeBounds() {
-  grid.computeBounds(glm::vec3(-wall_x, floor_y, -wall_z), glm::vec3(wall_x, 10.0f, wall_z));
+	glm::vec3 padding = glm::vec3(h); // catch particles on edges
+  grid.computeBounds(
+		glm::vec3(-wall_x, floor_y, -wall_z) - padding, // min bounds
+		glm::vec3(wall_x, 10.0f, wall_z) + padding // max bounds
+	);
 }
 
 void Solver::update(std::vector<Particle>& particles, std::vector<Collider*>& colliders, float dt) {
@@ -48,7 +52,7 @@ void Solver::computeKernels() {
 //pbf muller et al algo1 lines 1-4
 void Solver::applyForcesAndPredict(std::vector<Particle>& particles, float dt) {
 	for (auto& p : particles) {
-		p.velocity += dt * glm::vec3(0.0f, -gravity, 0.0f);
+		p.velocity += dt * gravity * g_dir;
 		p.predicted = p.position + dt*p.velocity;
 	}
 }
@@ -192,25 +196,6 @@ void Solver::computeNormals(std::vector<Particle>& particles) {
 		}
 		particles[i].normal = grad;
 	}
-
-	// avg w neighbors
-	// #pragma omp parallel for schedule(dynamic)
-	// for (int i = 0; i < particles.size(); i++) {
-	// 	// if (particles[i].surface < 0.5f) {
-	// 	//     float len = glm::length(particles[i].normal);
-	// 	//     particles[i].normal = len > 1e-6f ? -particles[i].normal / len : glm::vec3(0.0f, 1.0f, 0.0f);
-	// 	//     continue;
-	// 	// }
-	// 	glm::vec3 smoothed(0.0f);
-	// 	for (int j : neighborList[i]) {
-	// 		if (i == j) continue;
-	// 		float dist = glm::length(particles[i].position - particles[j].position);
-	// 		float w_ij = poly6(dist, h, poly6_coeff);
-	// 		smoothed += w_ij * particles[j].normal;
-	// 	}
-	// 	float len = glm::length(smoothed);
-	// 	particles[i].normal = len > 1e-6 ? -smoothed / len : glm::vec3(0.0f, 1.0f, 0.0f);
-	// }
 }
 
 // Akinci et al 2013 eq 5: combined surface tension force

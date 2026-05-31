@@ -13,7 +13,7 @@
 
 struct Grid {
 	float h; //smoothing radius == cell size
-	const int P1 = 73856093; // 
+	const int P1 = 73856093; //
 	const int P2 = 19349663;
 	const int P3 = 83492791;
 
@@ -28,7 +28,7 @@ struct Grid {
 	Grid(float h = 0.0f){
 		this->h = h;
 	}
-	
+
 	glm::ivec3 cell_coords(glm::vec3 pos) const {
 		return glm::ivec3(
 			(int)std::floor(pos.x / h),
@@ -38,9 +38,9 @@ struct Grid {
 	}
 
 	int hash(glm::ivec3 c) const {
-		return std::abs((c.x*P1)^(c.y*P2)^(c.z*P3)) % tableSize; 
+		return std::abs((c.x*P1)^(c.y*P2)^(c.z*P3)) % tableSize;
 	}
-	
+
 	void build(const std::vector<Particle>& particles) {
 		int n = (int)particles.size();
 		// tableSize = n; // table size = particle count, good tradeoff (Teschner)
@@ -62,7 +62,7 @@ struct Grid {
 		std::fill(cellCount.begin(), cellCount.end(), 0);
 
 		// pass 1: count particles per cell
-		// macklin and muller 2013 algo 1: 
+		// macklin and muller 2013 algo 1:
 		// find neighbors based on predicted positions
 		for (int i = 0; i < n; i++)
 			cellCount[hash(cell_coords(particles[i].predicted))]++;

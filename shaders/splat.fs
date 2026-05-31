@@ -24,7 +24,7 @@ void main()
 	float r = dot(fragPos, fragPos);
 	if (r > 1.0) discard;
 
-	vec3 n = normalize(vNormal);
+	vec3 n = -normalize(vNormal);
 	float diff = max(dot(n, normalize(lightDir)), 0.0);
 	// float spec = vSurface * min(pow(diff, 1.0 / roughness), 0.3);
 	float alpha = 1.0/roughness;

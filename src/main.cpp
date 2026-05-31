@@ -12,7 +12,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <iostream>
 #define STB_IMAGE_IMPLEMENTATION
-#include <stb_image.h>
+#include <stb/stb_image.h>
 #include <filesystem>
 #include <chrono>
 
@@ -103,19 +103,20 @@ int main() {
 	Shader shader("./shaders/splat.vs", "./shaders/splat.fs");
 	SplatRenderer renderer;
 
-	Scene scene(0.4f, 9.8f);
+	Scene scene;
 	bool sphereEnabled = false;
-	glm::vec3 sphereCenter(0.0f, 2.0f, 0.0f);
+	glm::vec3 sphereCenter(0.0f, 1.0f, 0.0f);
 	float sphereRadius = 1.0f;
 
 	Block block;
 	scene.addBlock(block);
-	
+
 	Skybox skybox;
 
 	float specular  = 0.5f;
 	float roughness = 0.1f;
 	float diffuse = 1.0f;
+  vec3 lightDir = glm::normalize(glm::vec3(-1.0f, 1.0f, -1.0f));
 	float blur = 0.8f;
 	int shaderType = 0;
 	bool showSkybox = true;
@@ -141,11 +142,16 @@ int main() {
 
 		if (ImGui::BeginTabBar("Config")) {
 			if (ImGui::BeginTabItem("Scene")) {
+        ImGui::SeparatorText("Particle Count");
 				ImGui::SliderInt("Nx", &block.nx, 1, 30);
 				ImGui::SliderInt("Ny", &block.ny, 1, 30);
 				ImGui::SliderInt("Nz", &block.nz, 1, 30);
 				ImGui::SliderFloat("Spacing", &block.spacing, 0.05f, 0.5f, "%.3f");
 				ImGui::SliderFloat("Radius",  &block.radius,  0.05f, 0.5f, "%.3f");
+        ImGui::SeparatorText("Origin");
+        ImGui::SliderFloat("x", &block.origin.x, -2.0f, 2.0f, "%.3f");
+				ImGui::SliderFloat("y", &block.origin.y, -2.0f, 2.0f, "%.3f");
+				ImGui::SliderFloat("z", &block.origin.z, -2.0f, 2.0f, "%.3f");
 				if (ImGui::Button("Add New")) {
 					scene.addBlock(block);
 				}
@@ -174,28 +180,34 @@ int main() {
 					}
 					ImGui::EndCombo();
 				}
-				ImGui::Text("Shading Style");
+				ImGui::Text("Shading Type");
 				if (ImGui::RadioButton("RGBA", shaderType == 0)) shaderType = 0;
 				ImGui::SameLine();
 				if (ImGui::RadioButton("Env Map", shaderType == 1)) shaderType = 1;
 				ImGui::SameLine();
 				if (ImGui::RadioButton("Fresnel", shaderType == 2)) shaderType = 2;
-				if (shaderType != 1) {
+				ImGui::SeparatorText("RGBA (requires reset)");
+				if (shaderType == 0) {
 					ImGui::ColorPicker3("Color", &block.color[0]);
 				}
 				ImGui::SliderFloat("Opacity", &block.color[3], 0.01f, 1.0f);
+        ImGui::SeparatorText("Lighting");
+        if (ImGui::SliderFloat3("Light Direction", &lightDir[0], -1.0, 1.0f, "%.01f")) {
+          if (glm::length(lightDir) > 1e-6f)
+            lightDir = glm::normalize(lightDir);
+        }
 				ImGui::SliderFloat("Specular",  &specular,  0.0f, 1.0f, "%.3f");
 				ImGui::SliderFloat("Roughness", &roughness, 0.01f, 1.0f, "%.3f");
 				ImGui::SliderFloat("Diffuse", &diffuse, 0.01, 1.0f, "%.3f");
 				ImGui::SliderFloat("Blur", &blur, 0.0f, 1.0f, "%.3f");
-				
+        ImGui::SliderInt("Surface Threshold", &scene.solver.surfaceThreshold, 1, 100);
+
 				ImGui::EndTabItem();
 			}
 
 			if (ImGui::BeginTabItem("Solver")) {
 				bool reloadKernels = false;
 				reloadKernels |= ImGui::SliderFloat("h", &scene.solver.h, 0.1f, 1.0f, "%.3f");
-				ImGui::SliderFloat("Gravity", &scene.solver.gravity, 0.0f, 20.0f, "%.3f");
 				ImGui::SliderFloat("rho0", &scene.solver.rho0, 1.0f, 200.0f, "%.3f");
 				ImGui::SliderFloat("Epsilon", &scene.solver.epsilon, 1.0f, 1000.0f, "%.3f");
 				ImGui::SliderInt("Iterations", &scene.solver.iterations, 1, 10);
@@ -210,9 +222,18 @@ int main() {
 				ImGui::SeparatorText("Surface Tension");
 				ImGui::SliderFloat("Gamma", &scene.solver.gamma_st, 0.0f, 1.0f, "%.4f");
 
-				ImGui::SliderInt("Surface threshold", &scene.solver.surfaceThreshold, 1, 100);
+        ImGui::Text("Gravity");
+        float g_angle = 0.0f;
+        ImGui::SliderFloat("Force", &scene.solver.gravity, 0.0f, 20.0f, "%.3f");
+        if (ImGui::SliderFloat("Rotation", &g_angle, 0.0f, 359.0f, "%.1f")) {
+          float rad = glm::radians(g_angle);
+          scene.solver.g_dir = glm::vec3(0.0f, -cos(rad), sin(rad));
+        }
 
-				if (reloadKernels) { scene.solver.computeKernels(); }
+				if (reloadKernels) {
+          scene.solver.computeKernels();
+          scene.solver.computeBounds();
+        }
 				ImGui::EndTabItem();
 			}
 
@@ -255,17 +276,53 @@ int main() {
 		}
 		ImGui::SameLine();
 		ImGui::Checkbox("Paused [space]", &isPaused);
-
+		ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.7f, 0.1f, 0.1f, 1.0f));
+		if (ImGui::Button("Record [P]")) {
+			prerender = true;
+		}
+		ImGui::PopStyleColor(1);
 		ImGui::End();
+
+		auto renderFrame = [&](std::vector<Particle>& particles, int w, int h) {
+			glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
+			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+			glEnable(GL_BLEND);
+			glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+
+			mat4 projection = perspective(radians(camera.Zoom), (float)w / h, 0.1f, 100.0f);
+			mat4 modelView = camera.GetViewMatrix();
+			float tanHalfFovy = tan(radians(camera.Zoom) * 0.5f);
+			vec2 focal = vec2((0.5f * w) / tanHalfFovy, (0.5f * h) / tanHalfFovy);
+
+			if (showSkybox) {
+				mat4 view = glm::mat4(glm::mat3(modelView));
+				skybox.draw(view, projection, cubemapTexture);
+			}
+
+			shader.use();
+			shader.setInt("cubeMap", 0);
+			shader.setVec3("cameraPos", camera.Position);
+			shader.setMat4("projection", projection);
+			shader.setMat4("modelView", modelView);
+			shader.setVec2("focal", focal);
+			shader.setVec2("viewport", vec2(w, h));
+			shader.setVec3("lightDir", lightDir);
+			shader.setFloat("blur", blur);
+			shader.setFloat("specular", specular);
+			shader.setFloat("roughness", roughness);
+			shader.setFloat("diffuse", diffuse);
+			shader.setInt("type", shaderType);
+
+			glActiveTexture(GL_TEXTURE0);
+			glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTexture);
+			renderer.draw(particles, modelView);
+		};
 
 		// prerender START
 		if(prerender){
 			prerender=false;
 			std::cout << "Prerendering start!\n";
-			if (isPaused)
-			{
-				isPaused = false;
-			}
+			if (isPaused) isPaused = false;
 
 			const int OUT_W = 1280;
 			const int OUT_H = 720;
@@ -288,13 +345,13 @@ int main() {
 
 			glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-			std::string ffmpegCmd = 
+			std::string ffmpegCmd =
 				"ffmpeg -y -f rawvideo -pixel_format rgb24 "
 				"-video_size 1280x720 -framerate 30 "
 				"-i pipe:0 -c:v libx264 -pix_fmt yuv420p output.mp4";
 
 			// https://stackoverflow.com/questions/34511312/how-to-encode-a-video-from-several-images-generated-in-a-c-program-without-wri
-			FILE* ffmpeg = _popen(ffmpegCmd.c_str(), "wb"); 
+			FILE* ffmpeg = _popen(ffmpegCmd.c_str(), "wb");
 			if (!ffmpeg) {
 					std::cout << "Failed to open ffmpeg pipe\n";
 					return -1;
@@ -306,13 +363,13 @@ int main() {
 
 			std::vector<std::vector<Particle>> frames(TOTAL_FRAMES);
 			std::cout << "Presimulating frames...\n";
-			
+
 			auto simStart = std::chrono::high_resolution_clock::now();
 
 			for (int f = 0; f < TOTAL_FRAMES; f++) {
-					scene.update(FRAME_DT);
-					frames[f] = scene.particles; 
-					if (f % 30 == 0) std::cout << "  frame " << f << "/" << TOTAL_FRAMES << "\n";
+				scene.update(FRAME_DT);
+				frames[f] = scene.particles;
+				if (f % 30 == 0) std::cout << "  frame " << f << "/" << TOTAL_FRAMES << "\n";
 			}
 
 			auto simEnd = std::chrono::high_resolution_clock::now();
@@ -333,55 +390,25 @@ int main() {
 			auto renderStart = std::chrono::high_resolution_clock::now();
 
 			for (int f = 0; f < TOTAL_FRAMES; f++) {
-					glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
-					glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-					glEnable(GL_BLEND);
-					glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+				renderFrame(frames[f], OUT_W, OUT_H);
 
-					// skybox
-					if (showSkybox) {
-							mat4 view = glm::mat4(glm::mat3(camera.GetViewMatrix()));
-							skybox.draw(view, projection, cubemapTexture);
-					}
-
-					shader.use();
-					shader.setInt("cubeMap", 0);
-					shader.setVec3("cameraPos", camera.Position);
-					shader.setMat4("projection", projection);
-					shader.setMat4("modelView", modelView);
-					shader.setVec2("focal", focal);
-					shader.setVec2("viewport", outViewport);
-					shader.setVec3("lightDir", glm::normalize(glm::vec3(1.0f, 1.0f, 1.0f)));
-					shader.setFloat("blur", blur);
-					shader.setFloat("specular", specular);
-					shader.setFloat("roughness", roughness);
-					shader.setInt("type", shaderType);
-
-					glActiveTexture(GL_TEXTURE0);
-					glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTexture);
-					renderer.draw(frames[f], modelView);
-
-					// https://registry.khronos.org/OpenGL-Refpages/gl4/html/glReadPixels.xhtml
-					// need to flip vertically cuz opengl and ffmpeg expect different origins
-					glReadPixels(0, 0, OUT_W, OUT_H, GL_RGB, GL_UNSIGNED_BYTE, pixels.data());
-					for (int row = 0; row < OUT_H / 2; row++) {
-							int opposite = OUT_H - 1 - row;
-							std::swap_ranges(
-									pixels.begin() + row * OUT_W * 3,
-									pixels.begin() + row * OUT_W * 3 + OUT_W * 3,
-									pixels.begin() + opposite * OUT_W * 3
-							);
-					}
-
-					fwrite(pixels.data(), 1, pixels.size(), ffmpeg);
-
-					if (f % 30 == 0) std::cout << "  rendered " << f << "/" << TOTAL_FRAMES << "\n";
-
+				// https://registry.khronos.org/OpenGL-Refpages/gl4/html/glReadPixels.xhtml
+				// Flip vertically, OpenGL and ffmpeg expect different origins
+				glReadPixels(0, 0, OUT_W, OUT_H, GL_RGB, GL_UNSIGNED_BYTE, pixels.data());
+				for (int row = 0; row < OUT_H / 2; row++) {
+					int opposite = OUT_H - 1 - row;
+					std::swap_ranges(
+						pixels.begin() + row * OUT_W * 3,
+						pixels.begin() + row * OUT_W * 3 + OUT_W * 3,
+						pixels.begin() + opposite * OUT_W * 3
+					);
 				}
-				
+				fwrite(pixels.data(), 1, pixels.size(), ffmpeg);
+				if (f % 30 == 0) std::cout << "  rendered " << f << "/" << TOTAL_FRAMES << "\n";
+			}
 			auto renderEnd = std::chrono::high_resolution_clock::now();
 			float renderMs = std::chrono::duration<float>(renderEnd - renderStart).count();
-			
+
 			glBindFramebuffer(GL_FRAMEBUFFER, 0);
 			glViewport(0, 0, width, height);
 			_pclose(ffmpeg);
@@ -395,7 +422,7 @@ int main() {
 			glDeleteTextures(1, &colorTex);
 			glDeleteRenderbuffers(1, &rbo);
 		}
-		// prerender END 
+		// prerender END
 
 		glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -425,7 +452,7 @@ int main() {
 		shader.setVec2("focal", focal);
 		shader.setVec2("viewport", viewport);
 		// lighting uniforms
-		shader.setVec3("lightDir", glm::normalize(glm::vec3(1.0f, 1.0f, 1.0f)));
+		shader.setVec3("lightDir", lightDir);
 		shader.setFloat("blur", blur);
 		shader.setFloat("specular",  specular);
 		shader.setFloat("roughness", roughness);

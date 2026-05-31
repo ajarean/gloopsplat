@@ -24,13 +24,13 @@ inline glm::vec3 spiky_grad(glm::vec3 r_vec, float h, float coefficient) {
 	// if (r > h || r < 1e-6f) return glm::vec3(0.0f);
 	// float coefficient = -45.0f / (M_PI * h*h*h*h*h*h); //h^6
 	if (r > h) return glm::vec3(0.0f);
-	
-	// if overlapping, apply a small offset 
+
+	// if overlapping, apply a small offset
 	if (r < 1e-6f) {
-		r_vec = glm::vec3(1e-5f, 0.0f, 0.0f); 
+		r_vec = glm::vec3(1e-5f, 0.0f, 0.0f);
 		r = glm::length(r_vec);
 	}
-	
+
 	float diff = h - r;
 	return coefficient * (diff*diff) * (r_vec / r);
 }
@@ -43,10 +43,10 @@ inline float cohesion(float r, float h) {
 	float hr = h - r;
 	if (2*r > h){ //attraction
 		return coeff * hr*hr*hr * r*r*r;
-	} 
+	}
 	else{ //repulsion
 		return coeff * (2.0f * hr*hr*hr * r*r*r - h*h*h*h*h*h/64.0f);
-	} 
+	}
 }
 
 #endif
