@@ -3,9 +3,6 @@
 #include "solver.h"
 #include <cmath>
 
-#include <chrono>
-#include <iostream>
-
 static const bool useStaticGrid = true;
 
 Solver::Solver(float h, float gravity, float rho0, float epsilon,
@@ -57,21 +54,13 @@ void Solver::applyForcesAndPredict(std::vector<Particle>& particles, float dt) {
 }
 
 void Solver::buildNeighborList(std::vector<Particle> &particles) {
-	auto t1 = std::chrono::high_resolution_clock::now();
   grid.build(particles);
-	auto t2 = std::chrono::high_resolution_clock::now();
 	neighborList.resize(particles.size());
 
 	#pragma omp parallel for schedule(dynamic)
 	for (int i = 0; i < particles.size(); i++) {
 		neighborList[i] = grid.neighbors(particles[i].predicted, particles);
 	}
-	auto t3 = std::chrono::high_resolution_clock::now();
-	using ms_double = std::chrono::duration<double, std::milli>;
-	ms_double d1 = t2 - t1;
-	ms_double d2 = t3 - t2;
-	ms_double t = t3 - t1;
-	std::cout << "Total time: " << t << "; Grid: " << d1 << "; Neighbor: " << d2 << "\n";
 }
 
 // pbf muller et al algo1 lines 21-23
@@ -86,7 +75,7 @@ void Solver::calculateLambda(std::vector<Particle>& particles) {
 	#pragma omp parallel for schedule(dynamic)
 	for (int i = 0; i < particles.size(); i++) {
 		Particle& p_i = particles[i];
-		auto neighbors = neighborList[i];
+		const auto& neighbors = neighborList[i];
 
 		float rho_i = 0.0f;
 		// eq2
@@ -121,7 +110,7 @@ void Solver::updatePositions(std::vector<Particle>& particles) {
 	#pragma omp parallel for schedule(dynamic)
 	for (int i = 0; i < particles.size(); i++) {
 		Particle& p_i = particles[i];
-		auto neighbors = neighborList[i];
+		const auto& neighbors = neighborList[i];
 
 		for (int j : neighbors) {
 			if (i == j) continue; //skip self
@@ -205,23 +194,23 @@ void Solver::computeNormals(std::vector<Particle>& particles) {
 	}
 
 	// avg w neighbors
-	#pragma omp parallel for schedule(dynamic)
-	for (int i = 0; i < particles.size(); i++) {
-		// if (particles[i].surface < 0.5f) {
-		//     float len = glm::length(particles[i].normal);
-		//     particles[i].normal = len > 1e-6f ? -particles[i].normal / len : glm::vec3(0.0f, 1.0f, 0.0f);
-		//     continue;
-		// }
-		glm::vec3 smoothed(0.0f);
-		for (int j : neighborList[i]) {
-			if (i == j) continue;
-			float dist = glm::length(particles[i].position - particles[j].position);
-			float w_ij = poly6(dist, h, poly6_coeff);
-			smoothed += w_ij * particles[j].normal;
-		}
-		float len = glm::length(smoothed);
-		particles[i].normal = len > 1e-6 ? -smoothed / len : glm::vec3(0.0f, 1.0f, 0.0f);
-	}
+	// #pragma omp parallel for schedule(dynamic)
+	// for (int i = 0; i < particles.size(); i++) {
+	// 	// if (particles[i].surface < 0.5f) {
+	// 	//     float len = glm::length(particles[i].normal);
+	// 	//     particles[i].normal = len > 1e-6f ? -particles[i].normal / len : glm::vec3(0.0f, 1.0f, 0.0f);
+	// 	//     continue;
+	// 	// }
+	// 	glm::vec3 smoothed(0.0f);
+	// 	for (int j : neighborList[i]) {
+	// 		if (i == j) continue;
+	// 		float dist = glm::length(particles[i].position - particles[j].position);
+	// 		float w_ij = poly6(dist, h, poly6_coeff);
+	// 		smoothed += w_ij * particles[j].normal;
+	// 	}
+	// 	float len = glm::length(smoothed);
+	// 	particles[i].normal = len > 1e-6 ? -smoothed / len : glm::vec3(0.0f, 1.0f, 0.0f);
+	// }
 }
 
 // Akinci et al 2013 eq 5: combined surface tension force
@@ -232,6 +221,7 @@ void Solver::applySurfaceTension(std::vector<Particle>& particles, float dt) {
 
 	// recompute densities per particl
 	std::vector<float> densities(particles.size(), 0.0f);
+	#pragma omp parallel for schedule(dynamic)
 	for (int i = 0; i < (int)particles.size(); i++) {
 		for (int j : neighborList[i]) {
 			float r = glm::length(particles[i].position - particles[j].position);
