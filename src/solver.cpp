@@ -34,6 +34,7 @@ void Solver::update(std::vector<Particle>& particles, std::vector<Collider*>& co
 		applyCollisions(particles, colliders);
 	}
 	updateVelocities(particles, dt);
+	computeDensities(particles);
   	detectSurfaces(particles);
 	computeNormals(particles);
 	applyViscosity(particles);
@@ -259,5 +260,17 @@ void Solver::smoothNormals(std::vector<Particle>& particles) {
     for (int i = 0; i < particles.size(); i++) {
         float len = glm::length(smoothed_normals[i]);
         particles[i].normal = len > 1e-6f ? -smoothed_normals[i] / len : glm::vec3(0.0f, 1.0f, 0.0f);
+    }
+}
+
+void Solver::computeDensities(std::vector<Particle>& particles) {
+    #pragma omp parallel for schedule(dynamic)
+    for (int i = 0; i < particles.size(); i++) {
+        float rho_i = 0.0f;
+        for (int j : neighborList[i]) {
+            float r = glm::length(particles[i].position - particles[j].position);
+            rho_i += particles[j].mass * poly6(r, h, poly6_coeff);
+        }
+        particles[i].density = rho_i;
     }
 }
