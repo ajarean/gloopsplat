@@ -113,15 +113,18 @@ int main() {
 
 	Skybox skybox;
 
-	float specular  = 0.5f;
+	float specular  = 0.8f;
 	float roughness = 0.1f;
-	float diffuse = 1.0f;
+	float diffuse = 0.8f;
 	vec3 lightDir = glm::normalize(glm::vec3(-1.0f, 1.0f, -1.0f));
 	float blur = 0.8f;
 	int shaderType = 0;
 	bool showSkybox = true;
+
+	//recording
 	int recordFps = 60;
 	int recordTime = 10;
+	char filename[20] = "output";
 
 	while (!glfwWindowShouldClose(window)) {
 		float currentFrame = static_cast<float>(glfwGetTime());
@@ -189,9 +192,7 @@ int main() {
 				ImGui::SameLine();
 				if (ImGui::RadioButton("Fresnel", shaderType == 2)) shaderType = 2;
 				ImGui::SeparatorText("RGBA (requires reset)");
-				if (shaderType == 0) {
-					ImGui::ColorPicker3("Color", &block.color[0]);
-				}
+				ImGui::ColorPicker3("Color", &block.color[0]);
 				ImGui::SliderFloat("Opacity", &block.color[3], 0.01f, 1.0f);
 				ImGui::SeparatorText("Lighting");
 				if (ImGui::SliderFloat3("Light Direction", &lightDir[0], -1.0, 1.0f, "%.01f")) {
@@ -266,6 +267,7 @@ int main() {
 			if (ImGui::BeginTabItem("Record")) {
 				ImGui::InputInt("FPS (affects dt)", &recordFps);
 				ImGui::InputInt("Time (seconds)", &recordTime);
+				ImGui::InputText("Filename", filename, 20);
 				ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.7f, 0.1f, 0.1f, 1.0f));
 				if (ImGui::Button("Record [P]")) {
 					prerender = true;
@@ -352,10 +354,15 @@ int main() {
 
 			glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
+			const int FPS = recordFps;
+			const int DURATION = recordTime;
+			const int TOTAL_FRAMES = FPS * DURATION;
+			const float FRAME_DT = 1.0f / FPS;
+
 			std::string ffmpegCmd =
 				"ffmpeg -y -f rawvideo -pixel_format rgb24 "
-				"-video_size 1280x720 -framerate 30 "
-				"-i pipe:0 -c:v libx264 -pix_fmt yuv420p output.mp4";
+				"-video_size 1280x720 -framerate " + std::to_string(FPS) +
+				" -i pipe:0 -c:v libx264 -pix_fmt yuv420p output/" + std::string(filename) + ".mp4";
 
 			// https://stackoverflow.com/questions/34511312/how-to-encode-a-video-from-several-images-generated-in-a-c-program-without-wri
 			FILE* ffmpeg = _popen(ffmpegCmd.c_str(), "wb");
@@ -363,10 +370,6 @@ int main() {
 					std::cout << "Failed to open ffmpeg pipe\n";
 					return -1;
 			}
-			const int FPS = recordFps;
-			const int DURATION = recordTime;
-			const int TOTAL_FRAMES = FPS * DURATION;
-			const float FRAME_DT = 1.0f / FPS;
 
 			std::vector<std::vector<Particle>> frames(TOTAL_FRAMES);
 			std::cout << "Presimulating frames...\n";
@@ -376,7 +379,8 @@ int main() {
 			for (int f = 0; f < TOTAL_FRAMES; f++) {
 				scene.update(FRAME_DT);
 				frames[f] = scene.particles;
-				if (f % 30 == 0) std::cout << "  frame " << f << "/" << TOTAL_FRAMES << "\n";
+				if (f % 5 == 0) glfwPollEvents();
+				if (f % FPS == 0) std::cout << "  frame " << f << "/" << TOTAL_FRAMES << "\n";
 			}
 
 			auto simEnd = std::chrono::high_resolution_clock::now();
@@ -384,7 +388,7 @@ int main() {
 
 			std::vector<unsigned char> pixels(OUT_W * OUT_H * 3);
 
-			std::cout << "Rendering frames...\n";
+			std::cout << "Simulation completed in " << simMs << "s.\n\nRendering frames...\n";
 			glViewport(0, 0, OUT_W, OUT_H);
 			glBindFramebuffer(GL_FRAMEBUFFER, fbo);
 
@@ -405,6 +409,7 @@ int main() {
 					);
 				}
 				fwrite(pixels.data(), 1, pixels.size(), ffmpeg);
+				if (f % 5 == 0) glfwPollEvents();
 				if (f % FPS == 0) std::cout << "  rendered " << f << "/" << TOTAL_FRAMES << "\n";
 			}
 			auto renderEnd = std::chrono::high_resolution_clock::now();

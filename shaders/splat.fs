@@ -26,11 +26,10 @@ void main()
 
 	vec3 n = -normalize(vNormal);
 	float diff = max(dot(n, normalize(lightDir)), 0.0);
-	// float spec = vSurface * min(pow(diff, 1.0 / roughness), 0.3);
 	float alpha = 1.0/roughness;
 	float spec = pow(diff, alpha);
 
-	vec3 c_color = vColor.rgb * (0.4 + diffuse*0.6*diff) + specular * vec3(spec);
+	vec3 c_color = vColor.rgb * min((0.4 + diffuse*0.6*diff), 1.0) + specular * vec3(spec);
 
 	// TODO: get thickness
 	// cp(ri) = dp + sp ⊙ Ls(ri, np, ρp) (Gaussian Splashing eq. 4)
@@ -39,16 +38,13 @@ void main()
 	vec3 R = reflect(I, normalize(vNormal));
 
 	vec3 Ls = texture(cubeMap, R).rgb;
-	// vec3 c = vColor.rgb * (0.6 + 0.4*diff) + specular * vec3(spec);
 
-	// vec3 depthColor = vColor.rgb * (1.0 / (1.0 + vDepth * 0.12));
-	// float depthOpacity = vColor.a * (1.0 / (1.0 + vDepth * 0.1));
 	float rho = exp(-r * blur) * vColor.a;
 	vec3 c;
 
-	vec3 k = vec3(0.5, 0.35, 0.2);
+	vec3 k = vec3(0.3, 0.3, 0.3);
 	float thickness = rho * (1.0 / (1.0 + vDepth * 0.1));
-	vec3 dp = exp(-k*thickness) * Ls;
+	vec3 dp = exp(-k*thickness) * Ls * vColor.rgb;
 	vec3 c_env = diffuse * dp + vec3(specular) * Ls;
 
 	vec3 v = normalize(cameraPos - vPosition);
