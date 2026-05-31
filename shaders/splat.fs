@@ -15,6 +15,7 @@ uniform float specular;
 uniform float roughness;
 uniform vec3 cameraPos;
 uniform int type; // [rgba, envMap, fresnel]
+uniform float colorStrength; // [0,1]
 
 out vec4 fragColor;
 
@@ -44,7 +45,8 @@ void main()
 
 	vec3 k = vec3(0.3, 0.3, 0.3);
 	float thickness = rho * (1.0 / (1.0 + vDepth * 0.1));
-	vec3 dp = exp(-k*thickness) * Ls * vColor.rgb;
+	vec3 tint = mix(vec3(1.0), vColor.rgb, colorStrength);
+	vec3 dp = exp(-k*thickness) * Ls * tint;
 	vec3 c_env = diffuse * dp + vec3(specular) * Ls;
 
 	vec3 v = normalize(cameraPos - vPosition);

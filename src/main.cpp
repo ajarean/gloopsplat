@@ -114,11 +114,12 @@ int main() {
 	Skybox skybox;
 
 	float specular  = 0.8f;
-	float roughness = 0.1f;
+	float roughness = 0.01f;
 	float diffuse = 0.8f;
 	vec3 lightDir = glm::normalize(glm::vec3(-1.0f, 1.0f, -1.0f));
 	float blur = 0.8f;
 	int shaderType = 0;
+	float colorStrength = 0.5f;
 	bool showSkybox = true;
 
 	//recording
@@ -194,6 +195,9 @@ int main() {
 				ImGui::SeparatorText("RGBA (requires reset)");
 				ImGui::ColorPicker3("Color", &block.color[0]);
 				ImGui::SliderFloat("Opacity", &block.color[3], 0.01f, 1.0f);
+				if (shaderType != 0) {
+					ImGui::SliderFloat("Color Strength", &colorStrength, 0.0f, 1.0f);
+				}
 				ImGui::SeparatorText("Lighting");
 				if (ImGui::SliderFloat3("Light Direction", &lightDir[0], -1.0, 1.0f, "%.01f")) {
 					if (glm::length(lightDir) > 1e-6f)
@@ -321,6 +325,7 @@ int main() {
 			shader.setFloat("roughness", roughness);
 			shader.setFloat("diffuse", diffuse);
 			shader.setInt("type", shaderType);
+			shader.setFloat("colorStrength", colorStrength);
 
 			glActiveTexture(GL_TEXTURE0);
 			glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTexture);
