@@ -48,6 +48,9 @@ float lastFrame = 0.0f;
 bool isPaused = false;
 bool shouldReload = false;
 bool prerender = false;
+bool shouldClear = false;
+bool shouldAddBlock = false;
+float shouldAddBlockCountdown = 0.0f;
 
 void framebuffer_size_callback(GLFWwindow* window, int _width, int _height);
 void mouse_callback(GLFWwindow* window, double xposIn, double yposIn);
@@ -157,14 +160,15 @@ int main() {
 				ImGui::SliderFloat("Radius",  &block.radius,  0.05f, 0.5f, "%.3f");
 				ImGui::SeparatorText("Origin");
 				ImGui::SliderFloat("x", &block.origin.x, -2.0f, 2.0f, "%.3f");
-				ImGui::SliderFloat("y", &block.origin.y, -2.0f, 2.0f, "%.3f");
+				ImGui::SliderFloat("y", &block.origin.y, 0.0f, 8.0f, "%.3f");
 				ImGui::SliderFloat("z", &block.origin.z, -2.0f, 2.0f, "%.3f");
-				if (ImGui::Button("Add New")) {
-					scene.addBlock(block);
+				ImGui::Button("Add Particles [F]");
+				if (ImGui::IsItemActive()) {
+					shouldAddBlock = true;
 				}
 				ImGui::SameLine();
-				if (ImGui::Button("Clear")) {
-					scene.particles.clear();
+				if (ImGui::Button("Clear [C]")) {
+					shouldClear = true;
 				}
 				ImGui::Text("Particle Count: %d", scene.particles.size());
 				ImGui::EndTabItem();
@@ -208,9 +212,9 @@ int main() {
 					if (glm::length(lightDir) > 1e-6f)
 						lightDir = glm::normalize(lightDir);
 				}
-				ImGui::SliderFloat("Specular",  &specular,  0.0f, 1.0f, "%.3f");
-				ImGui::SliderFloat("Roughness", &roughness, 0.01f, 1.0f, "%.3f");
-				ImGui::SliderFloat("Diffuse", &diffuse, 0.01, 1.0f, "%.3f");
+				ImGui::SliderFloat("Specular",  &specular,  0.0f, 2.0f, "%.3f");
+				ImGui::SliderFloat("Roughness", &roughness, 0.001f, 1.0f, "%.3f");
+				ImGui::SliderFloat("Diffuse", &diffuse, 0.01, 2.0f, "%.3f");
 				ImGui::SliderFloat("Blur", &blur, 0.0f, 1.0f, "%.3f");
 				ImGui::SliderInt("Surface Threshold", &scene.solver.surfaceThreshold, 1, 100);
 
@@ -441,10 +445,22 @@ int main() {
 		}
 		// prerender END
 
-		if(!isPaused){
+		if (!isPaused) {
 			scene.update(deltaTime);
 		}
 		renderFrame(scene.particles, width, height);
+
+		if (shouldClear) {
+			scene.particles.clear();
+			shouldClear = false;
+		}
+
+		shouldAddBlockCountdown -= deltaTime;
+		if (shouldAddBlock && shouldAddBlockCountdown <= 0.0f) {
+			scene.addBlock(block);
+			shouldAddBlockCountdown = 0.05f;
+		}
+		shouldAddBlock = false;
 
 		ImGui::Render();
 		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
@@ -479,6 +495,8 @@ void processInput(GLFWwindow* window) {
 		camera.ProcessKeyboard(DOWN, _deltaTime);
 	if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS)
 		camera.ProcessKeyboard(UP, _deltaTime);
+	if (glfwGetKey(window, GLFW_KEY_F) == GLFW_PRESS)
+    shouldAddBlock = true;
 }
 
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
@@ -489,6 +507,8 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 		shouldReload = true;
 	if(key == GLFW_KEY_P)
 		prerender = true;
+	if (key == GLFW_KEY_C)
+		shouldClear = true;
 }
 
 void framebuffer_size_callback(GLFWwindow* window, int _width, int _height) {
