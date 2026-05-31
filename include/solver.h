@@ -64,6 +64,7 @@ private:
 	void applyViscosity(std::vector<Particle>& particles);
 	void computeNormals(std::vector<Particle>& particles);
 	void applySurfaceTension(std::vector<Particle>& particles, float dt);
+    void smoothNormals(std::vector<Particle>& particles);
 };
 
 #endif
