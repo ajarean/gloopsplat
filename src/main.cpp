@@ -116,7 +116,7 @@ int main() {
 	float specular  = 0.5f;
 	float roughness = 0.1f;
 	float diffuse = 1.0f;
-  vec3 lightDir = glm::normalize(glm::vec3(-1.0f, 1.0f, -1.0f));
+	vec3 lightDir = glm::normalize(glm::vec3(-1.0f, 1.0f, -1.0f));
 	float blur = 0.8f;
 	int shaderType = 0;
 	bool showSkybox = true;
@@ -142,14 +142,14 @@ int main() {
 
 		if (ImGui::BeginTabBar("Config")) {
 			if (ImGui::BeginTabItem("Scene")) {
-        ImGui::SeparatorText("Particle Count");
+				ImGui::SeparatorText("Particle Count");
 				ImGui::SliderInt("Nx", &block.nx, 1, 30);
 				ImGui::SliderInt("Ny", &block.ny, 1, 30);
 				ImGui::SliderInt("Nz", &block.nz, 1, 30);
 				ImGui::SliderFloat("Spacing", &block.spacing, 0.05f, 0.5f, "%.3f");
 				ImGui::SliderFloat("Radius",  &block.radius,  0.05f, 0.5f, "%.3f");
-        ImGui::SeparatorText("Origin");
-        ImGui::SliderFloat("x", &block.origin.x, -2.0f, 2.0f, "%.3f");
+				ImGui::SeparatorText("Origin");
+				ImGui::SliderFloat("x", &block.origin.x, -2.0f, 2.0f, "%.3f");
 				ImGui::SliderFloat("y", &block.origin.y, -2.0f, 2.0f, "%.3f");
 				ImGui::SliderFloat("z", &block.origin.z, -2.0f, 2.0f, "%.3f");
 				if (ImGui::Button("Add New")) {
@@ -191,16 +191,16 @@ int main() {
 					ImGui::ColorPicker3("Color", &block.color[0]);
 				}
 				ImGui::SliderFloat("Opacity", &block.color[3], 0.01f, 1.0f);
-        ImGui::SeparatorText("Lighting");
-        if (ImGui::SliderFloat3("Light Direction", &lightDir[0], -1.0, 1.0f, "%.01f")) {
-          if (glm::length(lightDir) > 1e-6f)
-            lightDir = glm::normalize(lightDir);
-        }
+				ImGui::SeparatorText("Lighting");
+				if (ImGui::SliderFloat3("Light Direction", &lightDir[0], -1.0, 1.0f, "%.01f")) {
+					if (glm::length(lightDir) > 1e-6f)
+						lightDir = glm::normalize(lightDir);
+				}
 				ImGui::SliderFloat("Specular",  &specular,  0.0f, 1.0f, "%.3f");
 				ImGui::SliderFloat("Roughness", &roughness, 0.01f, 1.0f, "%.3f");
 				ImGui::SliderFloat("Diffuse", &diffuse, 0.01, 1.0f, "%.3f");
 				ImGui::SliderFloat("Blur", &blur, 0.0f, 1.0f, "%.3f");
-        ImGui::SliderInt("Surface Threshold", &scene.solver.surfaceThreshold, 1, 100);
+				ImGui::SliderInt("Surface Threshold", &scene.solver.surfaceThreshold, 1, 100);
 
 				ImGui::EndTabItem();
 			}
@@ -222,30 +222,30 @@ int main() {
 				ImGui::SeparatorText("Surface Tension");
 				ImGui::SliderFloat("Gamma", &scene.solver.gamma_st, 0.0f, 1.0f, "%.4f");
 
-        ImGui::Text("Gravity");
-        float g_angle = 0.0f;
-        ImGui::SliderFloat("Force", &scene.solver.gravity, 0.0f, 20.0f, "%.3f");
-        if (ImGui::SliderFloat("Rotation", &g_angle, 0.0f, 359.0f, "%.1f")) {
-          float rad = glm::radians(g_angle);
-          scene.solver.g_dir = glm::vec3(0.0f, -cos(rad), sin(rad));
-        }
+				ImGui::Text("Gravity");
+				float g_angle = 0.0f;
+				ImGui::SliderFloat("Force", &scene.solver.gravity, 0.0f, 20.0f, "%.3f");
+				if (ImGui::SliderFloat("Rotation", &g_angle, 0.0f, 359.0f, "%.1f")) {
+					float rad = glm::radians(g_angle);
+					scene.solver.g_dir = glm::vec3(0.0f, -cos(rad), sin(rad));
+				}
 
 				if (reloadKernels) {
-          scene.solver.computeKernels();
-          scene.solver.computeBounds();
-        }
+					scene.solver.computeKernels();
+					scene.solver.computeBounds();
+				}
 				ImGui::EndTabItem();
 			}
 
 			if (ImGui::BeginTabItem("Colliders")) {
-        bool boundsChanged = false;
+				bool boundsChanged = false;
 				ImGui::Text("Boundaries");
 				boundsChanged |= ImGui::SliderFloat("Floor Y", &scene.solver.floor_y, -5.0f, 5.0f, "%.3f");
 				boundsChanged |= ImGui::SliderFloat("Wall X", &scene.solver.wall_x, 0.5f, 10.0f, "%.3f");
 				boundsChanged |= ImGui::SliderFloat("Wall Z", &scene.solver.wall_z, 0.5f, 10.0f, "%.3f");
-        if (boundsChanged) {
-          scene.solver.computeBounds();
-        }
+				if (boundsChanged) {
+					scene.solver.computeBounds();
+				}
 				ImGui::SeparatorText("Sphere Colliders");
 				bool sphereChanged = false;
 				sphereChanged |= ImGui::Checkbox("Sphere", &sphereEnabled);
@@ -424,44 +424,10 @@ int main() {
 		}
 		// prerender END
 
-		glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-		glEnable(GL_BLEND);
-		glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
-
 		if(!isPaused){
 			scene.update(deltaTime);
 		}
-
-		mat4 projection = perspective(radians(camera.Zoom), (float)width / (float)height, 0.1f, 100.0f);
-		mat4 modelView = camera.GetViewMatrix(); // model is identity
-		float tanHalfFovy = tan(radians(camera.Zoom) * 0.5f);
-		vec2 focal = vec2((0.5f * (float)width) / tanHalfFovy, (0.5f * (float)height) / tanHalfFovy);
-
-		// draw skybox
-		if (showSkybox) {
-			mat4 view = glm::mat4(glm::mat3(camera.GetViewMatrix()));
-			skybox.draw(view, projection, cubemapTexture);
-		}
-
-		shader.use();
-		shader.setInt("cubeMap", 0);
-		shader.setVec3("cameraPos", camera.Position);
-		shader.setMat4("projection", projection);
-		shader.setMat4("modelView", modelView);
-		shader.setVec2("focal", focal);
-		shader.setVec2("viewport", viewport);
-		// lighting uniforms
-		shader.setVec3("lightDir", lightDir);
-		shader.setFloat("blur", blur);
-		shader.setFloat("specular",  specular);
-		shader.setFloat("roughness", roughness);
-		shader.setFloat("diffuse", diffuse);
-		shader.setInt("type", shaderType);
-
-		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTexture);
-		renderer.draw(scene.particles, modelView);
+		renderFrame(scene.particles, width, height);
 
 		ImGui::Render();
 		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
@@ -492,6 +458,10 @@ void processInput(GLFWwindow* window) {
 		camera.ProcessKeyboard(LEFT, _deltaTime);
 	if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
 		camera.ProcessKeyboard(RIGHT, _deltaTime);
+	if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS)
+		camera.ProcessKeyboard(DOWN, _deltaTime);
+	if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS)
+		camera.ProcessKeyboard(UP, _deltaTime);
 }
 
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
