@@ -22,13 +22,11 @@ FetchContent_MakeAvailable(glm)
 find_package(OpenGL REQUIRED)
 find_package(OpenMP REQUIRED)
 
+file(GLOB SOURCES CONFIGURE_DEPENDS src/*.cpp src/glad.c)
 file(GLOB IMGUI_SOURCES src/imgui/*.cpp)
 
 add_executable(gloopsplat
-  src/main.cpp
-  src/glad.c
-  src/shader.cpp
-  src/splatRenderer.cpp
+  ${SOURCES}
   ${IMGUI_SOURCES}
 )
 

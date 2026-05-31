@@ -28,3 +28,4 @@ CMakeSettings.json
 imgui.ini
 src/test*.cpp
 *.mp4
+output/
