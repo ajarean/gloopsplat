@@ -120,6 +120,8 @@ int main() {
 	float blur = 0.8f;
 	int shaderType = 0;
 	bool showSkybox = true;
+	int recordFps = 60;
+	int recordTime = 10;
 
 	while (!glfwWindowShouldClose(window)) {
 		float currentFrame = static_cast<float>(glfwGetTime());
@@ -258,7 +260,17 @@ int main() {
 						scene.addSphereCollider(sphereCenter, sphereRadius);
 					}
 				}
+				ImGui::EndTabItem();
+			}
 
+			if (ImGui::BeginTabItem("Record")) {
+				ImGui::InputInt("FPS (affects dt)", &recordFps);
+				ImGui::InputInt("Time (seconds)", &recordTime);
+				ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.7f, 0.1f, 0.1f, 1.0f));
+				if (ImGui::Button("Record [P]")) {
+					prerender = true;
+				}
+				ImGui::PopStyleColor(1);
 				ImGui::EndTabItem();
 			}
 
@@ -276,11 +288,6 @@ int main() {
 		}
 		ImGui::SameLine();
 		ImGui::Checkbox("Paused [space]", &isPaused);
-		ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.7f, 0.1f, 0.1f, 1.0f));
-		if (ImGui::Button("Record [P]")) {
-			prerender = true;
-		}
-		ImGui::PopStyleColor(1);
 		ImGui::End();
 
 		auto renderFrame = [&](std::vector<Particle>& particles, int w, int h) {
@@ -356,8 +363,8 @@ int main() {
 					std::cout << "Failed to open ffmpeg pipe\n";
 					return -1;
 			}
-			const int FPS = 30;
-			const int DURATION = 10;
+			const int FPS = recordFps;
+			const int DURATION = recordTime;
 			const int TOTAL_FRAMES = FPS * DURATION;
 			const float FRAME_DT = 1.0f / FPS;
 
@@ -381,12 +388,6 @@ int main() {
 			glViewport(0, 0, OUT_W, OUT_H);
 			glBindFramebuffer(GL_FRAMEBUFFER, fbo);
 
-			mat4 projection = perspective(radians(camera.Zoom), (float)OUT_W / OUT_H, 0.1f, 100.0f);
-			mat4 modelView = camera.GetViewMatrix();
-			float tanHalfFovy = tan(radians(camera.Zoom) * 0.5f);
-			vec2 focal = vec2((0.5f * OUT_W) / tanHalfFovy, (0.5f * OUT_H) / tanHalfFovy);
-			vec2 outViewport = vec2(OUT_W, OUT_H);
-
 			auto renderStart = std::chrono::high_resolution_clock::now();
 
 			for (int f = 0; f < TOTAL_FRAMES; f++) {
@@ -404,7 +405,7 @@ int main() {
 					);
 				}
 				fwrite(pixels.data(), 1, pixels.size(), ffmpeg);
-				if (f % 30 == 0) std::cout << "  rendered " << f << "/" << TOTAL_FRAMES << "\n";
+				if (f % FPS == 0) std::cout << "  rendered " << f << "/" << TOTAL_FRAMES << "\n";
 			}
 			auto renderEnd = std::chrono::high_resolution_clock::now();
 			float renderMs = std::chrono::duration<float>(renderEnd - renderStart).count();
