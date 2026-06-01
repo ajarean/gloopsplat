@@ -58,14 +58,13 @@ private:
 	void updateVelocities(std::vector<Particle>& particles, float dt);
 	void calculateLambda(std::vector<Particle>& particles);
 	void updatePositions(std::vector<Particle>& particles);
-	void detectSurfaces(std::vector<Particle>& particles);
 	void applyBoundaryConditions(std::vector<Particle>& particles);
 	void applyCollisions(std::vector<Particle>& particles, std::vector<Collider*>& colliders);
 	void applyViscosity(std::vector<Particle>& particles);
 	void computeNormals(std::vector<Particle>& particles);
 	void applySurfaceTension(std::vector<Particle>& particles, float dt);
-    void smoothNormals(std::vector<Particle>& particles);
-    void computeDensities(std::vector<Particle>& particles);
+	void smoothNormals(std::vector<Particle>& particles);
+	void computeDensities(std::vector<Particle>& particles);
 };
 
 #endif

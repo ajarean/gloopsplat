@@ -21,7 +21,6 @@ inline float poly6(float r, float h, float coefficient){
 // -45/(pi*h^6) * (h-r)^2
 inline glm::vec3 spiky_grad(glm::vec3 r_vec, float h, float coefficient) {
 	float r = glm::length(r_vec);
-	// if (r > h || r < 1e-6f) return glm::vec3(0.0f);
 	// float coefficient = -45.0f / (M_PI * h*h*h*h*h*h); //h^6
 	if (r > h) return glm::vec3(0.0f);
 

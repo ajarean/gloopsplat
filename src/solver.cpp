@@ -35,7 +35,6 @@ void Solver::update(std::vector<Particle>& particles, std::vector<Collider*>& co
 	}
 	updateVelocities(particles, dt);
 	computeDensities(particles);
-	detectSurfaces(particles);
 	computeNormals(particles);
 	applyViscosity(particles);
 	applySurfaceTension(particles, dt);
@@ -84,17 +83,12 @@ void Solver::calculateLambda(std::vector<Particle>& particles) {
 		const auto& neighbors = neighborList[i];
 
 		float rho_i = 0.0f;
-		// eq2
+		// eq2, eq1
 		for (int j : neighbors) {
 			float r = glm::length(p_i.predicted - particles[j].predicted);
-			// rho_i += poly6(r, h, poly6_coeff);
 			rho_i += particles[j].mass * poly6(r, h, poly6_coeff);
 		}
-		
-
-		// eq1
 		float C_i = rho_i/rho0 - 1.0f;
-		// float C_i = std::max(rho_i / rho0 - 1.0f, 0.0f);
 
 		// eq8
 		float denominator = 0.0f;
@@ -118,9 +112,7 @@ void Solver::updatePositions(std::vector<Particle>& particles) {
 	#pragma omp parallel for schedule(dynamic)
 	for (int i = 0; i < particles.size(); i++) {
 		Particle& p_i = particles[i];
-		const auto& neighbors = neighborList[i];
-
-		for (int j : neighbors) {
+		for (int j : neighborList[i]) {
 			if (i == j) continue; //skip self
 
 			float dist = glm::length(p_i.predicted - particles[j].predicted);
@@ -135,13 +127,6 @@ void Solver::updatePositions(std::vector<Particle>& particles) {
 
 	for (int i = 0; i < particles.size(); i++) {
 		particles[i].predicted += deltas[i];
-	}
-}
-
-void Solver::detectSurfaces(std::vector<Particle>& particles) {
-	for (int i = 0; i < particles.size(); i++) {
-		// interpolate closer to 1 if less neighbors (more surface weight)
-		particles[i].surface = glm::mix(particles[i].surface, neighborList[i].size() < surfaceThreshold ? 1.0f : 0.0f, 0.05f);
 	}
 }
 
@@ -199,6 +184,8 @@ void Solver::computeNormals(std::vector<Particle>& particles) {
 			grad += (particles[j].mass / particles[j].density) * spiky_grad(particles[i].position - particles[j].position, h, spiky_coeff);
 		}
 		particles[i].normal = h * grad;
+		// detect surfaces
+		particles[i].surface = glm::mix(particles[i].surface, neighborList[i].size() < surfaceThreshold ? 1.0f : 0.0f, 0.05f);
 	}
 }
 
@@ -206,11 +193,11 @@ void Solver::computeNormals(std::vector<Particle>& particles) {
 // F_st = K_ij * (F_cohesion + F_curvature)
 void Solver::applySurfaceTension(std::vector<Particle>& particles, float dt) {
 	if (gamma_st == 0) return;
-	std::vector<glm::vec3> forces(particles.size(), glm::vec3(0.0f));
 
 	#pragma omp parallel for schedule(dynamic)
-	for (int i = 0; i < (int)particles.size(); i++) {
+	for (int i = 0; i < particles.size(); i++) {
 		Particle& p_i = particles[i];
+		glm::vec3 force(0.0f);
 
 		for (int j : neighborList[i]) {
 			if (i == j) continue;
@@ -220,29 +207,20 @@ void Solver::applySurfaceTension(std::vector<Particle>& particles, float dt) {
 			float dist = glm::length(x_ij);
 			if (dist < 1e-6f) continue;
 
-			// eq4
-			float K_ij = 2.0f * rho0 / (p_i.density + p_j.density);
-
-			// eq1
+			float K_ij = 2.0f * rho0 / (p_i.density + p_j.density); // eq 4
 			float C = cohesion(dist, h);
-			glm::vec3 F_cohesion = -gamma_st * p_i.mass * p_j.mass * C * (x_ij / dist);
-
-			// eq3
-			glm::vec3 F_curvature = -gamma_st * p_i.mass* (p_i.normal - p_j.normal);
-
-			// eq 5
-			forces[i] += K_ij * (F_cohesion + F_curvature);
+			glm::vec3 F_cohesion = -gamma_st * p_i.mass * p_j.mass * C * (x_ij / dist); // eq1
+			glm::vec3 F_curvature = -gamma_st * p_i.mass* (p_i.normal - p_j.normal); // eq3
+			force += K_ij * (F_cohesion + F_curvature); // eq 5
 		}
+		particles[i].velocity += (force / particles[i].mass) * dt;
 	}
-
-	for (int i = 0; i < (int)particles.size(); i++)
-		particles[i].velocity += (forces[i] / particles[i].mass) * dt;
 }
 
 void Solver::smoothNormals(std::vector<Particle>& particles) {
 	std::vector<glm::vec3> smoothed_normals(particles.size(), glm::vec3(0.0f));
 
-// smooth densities
+	// smooth densities
 	#pragma omp parallel for schedule(dynamic)
 	for (int i = 0; i < particles.size(); i++) {
 		glm::vec3 smoothed(0.0f);
@@ -250,12 +228,12 @@ void Solver::smoothNormals(std::vector<Particle>& particles) {
 			if (i == j) continue;
 			float dist = glm::length(particles[i].position - particles[j].position);
 			float w_ij = poly6(dist, h, poly6_coeff);
-			smoothed += w_ij * particles[j].normal; 
+			smoothed += w_ij * particles[j].normal;
 		}
 		smoothed_normals[i] = smoothed;
 	}
 
-	// normalize 
+	// normalize
 	#pragma omp parallel for schedule(dynamic)
 	for (int i = 0; i < particles.size(); i++) {
 		float len = glm::length(smoothed_normals[i]);

@@ -134,7 +134,7 @@ int main() {
 	while (!glfwWindowShouldClose(window)) {
 		float currentFrame = static_cast<float>(glfwGetTime());
 		deltaTime = currentFrame - lastFrame;
-		deltaTime = glm::min(deltaTime, 0.016f); //cap to 60fps
+		deltaTime = glm::min(deltaTime, 1.0f/recordFps); //cap fps to restrict dt
 		lastFrame = currentFrame;
 		processInput(window);
 

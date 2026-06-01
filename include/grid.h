@@ -10,14 +10,12 @@
 
 // https://matthias-research.github.io/pages/publications/tetraederCollision.pdf
 // teschner et al
-
 struct Grid {
 	float h; //smoothing radius == cell size
 	const int P1 = 73856093; //
 	const int P2 = 19349663;
 	const int P3 = 83492791;
 
-	// std::unordered_map<int, std::vector<int>> cells;
 	int tableSize;
 	int lastN = -1;
 	std::vector<int> cellCount; // particles per cell
@@ -43,13 +41,6 @@ struct Grid {
 
 	void build(const std::vector<Particle>& particles) {
 		int n = (int)particles.size();
-		// tableSize = n; // table size = particle count, good tradeoff (Teschner)
-		// tableSize = nextPrime(10*n) ;
-
-		// cellCount.assign(tableSize, 0);
-		// cellStart.resize(tableSize);
-		// flat.resize(n);
-
 		if (n != lastN) {
 			tableSize = 3 * n;
 			cellCount.resize(tableSize);
