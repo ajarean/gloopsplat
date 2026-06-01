@@ -25,7 +25,7 @@ void StaticGrid::computeBounds(glm::vec3 minBounds, glm::vec3 maxBounds) {
 	tableSize = dims.x * dims.y * dims.z;
 	cellCount.resize(tableSize);
 	cellStart.resize(tableSize);
-	insertAt.reserve(tableSize);
+	insertAt.resize(tableSize);
 }
 
 void StaticGrid::build(const std::vector<Particle>& particles) {
