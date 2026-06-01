@@ -27,7 +27,7 @@ void main()
 	float r = dot(fragPos, fragPos);
 	if (r > 1.0) discard;
 
-	vec3 n = -normalize(vNormal); // normal
+	vec3 n = normalize(vNormal); // normal
 	vec3 v = normalize(cameraPos - vPosition); // vector to cam
 	vec3 l = normalize(lightDir);
 	vec3 h = normalize(normalize(lightDir) + v); // halfway
