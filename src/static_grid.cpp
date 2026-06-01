@@ -10,15 +10,15 @@ glm::ivec3 StaticGrid::cell_coords(glm::vec3 pos) const {
 
 int StaticGrid::index(glm::ivec3 c) const {
 	glm::ivec3 pos = c - min; // convert to grid space
-  if (pos.x < 0 || pos.y < 0 || pos.z < 0 ||
-      pos.x >= dims.x || pos.y >= dims.y || pos.z >= dims.z)
-        return -1;
+	if (pos.x < 0 || pos.y < 0 || pos.z < 0 ||
+			pos.x >= dims.x || pos.y >= dims.y || pos.z >= dims.z)
+				return -1;
 	return (pos.z * dims.x * dims.y) + (pos.y * dims.x) + pos.x;
 }
 
 void StaticGrid::computeBounds(glm::vec3 minBounds, glm::vec3 maxBounds) {
-  glm::ivec3 padding = glm::ivec3(1);
-  // glm::ivec3 padding = glm::ivec3(0);
+	glm::ivec3 padding = glm::ivec3(1);
+	// glm::ivec3 padding = glm::ivec3(0);
 	min = cell_coords(minBounds) - padding;
 	max = cell_coords(maxBounds) + padding;
 	dims = max - min + glm::ivec3(1);
@@ -37,10 +37,10 @@ void StaticGrid::build(const std::vector<Particle>& particles) {
 
 	// count particles per cell
 	for (int i = 0; i < n; i++) {
-    int idx = index(cell_coords(particles[i].predicted));
-    if (idx < 0) continue;
+		int idx = index(cell_coords(particles[i].predicted));
+		if (idx < 0) continue;
 		cellCount[idx]++;
-  }
+	}
 
 	// prefix sum to get start indices
 	cellStart[0] = 0;
@@ -51,7 +51,7 @@ void StaticGrid::build(const std::vector<Particle>& particles) {
 	insertAt = cellStart;
 	for (int i = 0; i < n; i++) {
 		int idx = index(cell_coords(particles[i].predicted));
-    if (idx < 0) continue;
+		if (idx < 0) continue;
 		flat[insertAt[idx]++] = i;
 	}
 }
@@ -71,7 +71,7 @@ std::vector<int> StaticGrid::neighbors(glm::vec3 pos, const std::vector<Particle
 					continue;
 
 				int key = index(cell);
-        if (key < 0) continue;
+				if (key < 0) continue;
 				// check neighboring cells and make sure the particles are actually h distance away
 				for (int k = cellStart[key]; k < cellStart[key] + cellCount[key]; k++) {
 					int idx = flat[k];

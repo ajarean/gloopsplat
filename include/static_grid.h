@@ -20,7 +20,7 @@ public:
 
 	glm::ivec3 min = glm::ivec3(0);
 	glm::ivec3 max = glm::ivec3(0);
-  glm::ivec3 dims = glm::ivec3(0);
+	glm::ivec3 dims = glm::ivec3(0);
 
 	StaticGrid(float h = 0.0f) : h(h) {};
 

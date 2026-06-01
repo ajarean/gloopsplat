@@ -11,12 +11,12 @@ Solver::Solver(float h, float gravity, float rho0, float epsilon,
 	scorr_k(scorr_k), scorr_dq(scorr_dq), scorr_n(scorr_n), xsph_c(xsph_c), grid(h)
 {
 	computeKernels();
-  computeBounds();
+	computeBounds();
 }
 
 void Solver::computeBounds() {
 	glm::vec3 padding = glm::vec3(h); // catch particles on edges
-  grid.computeBounds(
+	grid.computeBounds(
 		glm::vec3(-wall_x, floor_y, -wall_z) - padding, // min bounds
 		glm::vec3(wall_x, 10.0f, wall_z) + padding // max bounds
 	);
@@ -26,7 +26,7 @@ void Solver::update(std::vector<Particle>& particles, std::vector<Collider*>& co
 	if (particles.size() == 0) return;
 
 	applyForcesAndPredict(particles, dt);
-  buildNeighborList(particles);
+	buildNeighborList(particles);
 	for (int i = 0; i < iterations; i++) {
 		calculateLambda(particles);
 		updatePositions(particles);
@@ -35,7 +35,7 @@ void Solver::update(std::vector<Particle>& particles, std::vector<Collider*>& co
 	}
 	updateVelocities(particles, dt);
 	computeDensities(particles);
-  	detectSurfaces(particles);
+	detectSurfaces(particles);
 	computeNormals(particles);
 	applyViscosity(particles);
 	applySurfaceTension(particles, dt);
@@ -60,7 +60,7 @@ void Solver::applyForcesAndPredict(std::vector<Particle>& particles, float dt) {
 }
 
 void Solver::buildNeighborList(std::vector<Particle> &particles) {
-  grid.build(particles);
+	grid.build(particles);
 	neighborList.resize(particles.size());
 
 	#pragma omp parallel for schedule(dynamic)
@@ -139,9 +139,9 @@ void Solver::updatePositions(std::vector<Particle>& particles) {
 }
 
 void Solver::detectSurfaces(std::vector<Particle>& particles) {
-  for (int i = 0; i < particles.size(); i++) {
-    // interpolate closer to 1 if less neighbors (more surface weight)
-    particles[i].surface = glm::mix(particles[i].surface, neighborList[i].size() < surfaceThreshold ? 1.0f : 0.0f, 0.05f);
+	for (int i = 0; i < particles.size(); i++) {
+		// interpolate closer to 1 if less neighbors (more surface weight)
+		particles[i].surface = glm::mix(particles[i].surface, neighborList[i].size() < surfaceThreshold ? 1.0f : 0.0f, 0.05f);
 	}
 }
 
@@ -149,9 +149,9 @@ void Solver::detectSurfaces(std::vector<Particle>& particles) {
 void Solver::applyBoundaryConditions(std::vector<Particle>& particles) {
 	// axis aligned box for now; can replace with something more complex if needed
 	for (auto& p : particles) {
-    if (p.predicted.y > 10.0f - p.radius) {
-      p.predicted.y = 10.0f - p.radius;
-    }
+		if (p.predicted.y > 10.0f - p.radius) {
+			p.predicted.y = 10.0f - p.radius;
+		}
 		if (p.predicted.y < floor_y + p.radius) {
 			p.predicted.y = floor_y + p.radius;
 		}
@@ -240,37 +240,37 @@ void Solver::applySurfaceTension(std::vector<Particle>& particles, float dt) {
 }
 
 void Solver::smoothNormals(std::vector<Particle>& particles) {
-    std::vector<glm::vec3> smoothed_normals(particles.size(), glm::vec3(0.0f));
-	
-	// smooth densities
-    #pragma omp parallel for schedule(dynamic)
-    for (int i = 0; i < particles.size(); i++) {
-        glm::vec3 smoothed(0.0f);
-        for (int j : neighborList[i]) {
-            if (i == j) continue;
-            float dist = glm::length(particles[i].position - particles[j].position);
-            float w_ij = poly6(dist, h, poly6_coeff);
-            smoothed += w_ij * particles[j].normal; 
-        }
-        smoothed_normals[i] = smoothed;
-    }
+	std::vector<glm::vec3> smoothed_normals(particles.size(), glm::vec3(0.0f));
 
-    // normalize 
-    #pragma omp parallel for schedule(dynamic)
-    for (int i = 0; i < particles.size(); i++) {
-        float len = glm::length(smoothed_normals[i]);
-        particles[i].normal = len > 1e-6f ? -smoothed_normals[i] / len : glm::vec3(0.0f, 1.0f, 0.0f);
-    }
+// smooth densities
+	#pragma omp parallel for schedule(dynamic)
+	for (int i = 0; i < particles.size(); i++) {
+		glm::vec3 smoothed(0.0f);
+		for (int j : neighborList[i]) {
+			if (i == j) continue;
+			float dist = glm::length(particles[i].position - particles[j].position);
+			float w_ij = poly6(dist, h, poly6_coeff);
+			smoothed += w_ij * particles[j].normal; 
+		}
+		smoothed_normals[i] = smoothed;
+	}
+
+	// normalize 
+	#pragma omp parallel for schedule(dynamic)
+	for (int i = 0; i < particles.size(); i++) {
+		float len = glm::length(smoothed_normals[i]);
+		particles[i].normal = len > 1e-6f ? -smoothed_normals[i] / len : glm::vec3(0.0f, 1.0f, 0.0f);
+	}
 }
 
 void Solver::computeDensities(std::vector<Particle>& particles) {
-    #pragma omp parallel for schedule(dynamic)
-    for (int i = 0; i < particles.size(); i++) {
-        float rho_i = 0.0f;
-        for (int j : neighborList[i]) {
-            float r = glm::length(particles[i].position - particles[j].position);
-            rho_i += particles[j].mass * poly6(r, h, poly6_coeff);
-        }
-        particles[i].density = rho_i;
-    }
+	#pragma omp parallel for schedule(dynamic)
+	for (int i = 0; i < particles.size(); i++) {
+		float rho_i = 0.0f;
+		for (int j : neighborList[i]) {
+			float r = glm::length(particles[i].position - particles[j].position);
+			rho_i += particles[j].mass * poly6(r, h, poly6_coeff);
+		}
+		particles[i].density = rho_i;
+	}
 }

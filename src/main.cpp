@@ -496,7 +496,7 @@ void processInput(GLFWwindow* window) {
 	if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS)
 		camera.ProcessKeyboard(UP, _deltaTime);
 	if (glfwGetKey(window, GLFW_KEY_F) == GLFW_PRESS)
-    shouldAddBlock = true;
+		shouldAddBlock = true;
 }
 
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {

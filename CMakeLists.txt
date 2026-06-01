@@ -6,16 +6,16 @@ set(CMAKE_CXX_STANDARD 20)
 include(FetchContent)
 
 FetchContent_Declare(
-  glfw
-  GIT_REPOSITORY https://github.com/glfw/glfw
-  GIT_TAG 3.4
+	glfw
+	GIT_REPOSITORY https://github.com/glfw/glfw
+	GIT_TAG 3.4
 )
 FetchContent_MakeAvailable(glfw)
 
 FetchContent_Declare(
-  glm
-  GIT_REPOSITORY https://github.com/g-truc/glm
-  GIT_TAG 1.0.3
+	glm
+	GIT_REPOSITORY https://github.com/g-truc/glm
+	GIT_TAG 1.0.3
 )
 FetchContent_MakeAvailable(glm)
 
@@ -26,8 +26,8 @@ file(GLOB SOURCES CONFIGURE_DEPENDS src/*.cpp src/glad.c)
 file(GLOB IMGUI_SOURCES src/imgui/*.cpp)
 
 add_executable(gloopsplat
-  ${SOURCES}
-  ${IMGUI_SOURCES}
+	${SOURCES}
+	${IMGUI_SOURCES}
 )
 
 target_include_directories(gloopsplat PUBLIC include include/imgui)
@@ -35,13 +35,13 @@ target_include_directories(gloopsplat PUBLIC include include/imgui)
 target_link_libraries(gloopsplat PRIVATE glfw glm::glm OpenGL::GL OpenMP::OpenMP_CXX)
 
 add_custom_command(TARGET gloopsplat POST_BUILD
-  COMMAND ${CMAKE_COMMAND} -E copy_directory
-    "${CMAKE_CURRENT_SOURCE_DIR}/shaders"
-    "$<TARGET_FILE_DIR:gloopsplat>/shaders"
+	COMMAND ${CMAKE_COMMAND} -E copy_directory
+		"${CMAKE_CURRENT_SOURCE_DIR}/shaders"
+		"$<TARGET_FILE_DIR:gloopsplat>/shaders"
 )
 
 add_custom_command(TARGET gloopsplat POST_BUILD
-  COMMAND ${CMAKE_COMMAND} -E copy_directory
-    "${CMAKE_CURRENT_SOURCE_DIR}/textures"
-    "$<TARGET_FILE_DIR:gloopsplat>/textures"
+	COMMAND ${CMAKE_COMMAND} -E copy_directory
+		"${CMAKE_CURRENT_SOURCE_DIR}/textures"
+		"$<TARGET_FILE_DIR:gloopsplat>/textures"
 )

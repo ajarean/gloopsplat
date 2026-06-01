@@ -110,9 +110,9 @@ struct Grid {
 		return result;
 	}
 
-  void computeBounds(glm::vec3 minBounds, glm::vec3 maxBounds) {
-    // no-op, this is just to compare with static_grid
-  }
+	void computeBounds(glm::vec3 minBounds, glm::vec3 maxBounds) {
+		// no-op, this is just to compare with static_grid
+	}
 };
 
 #endif
