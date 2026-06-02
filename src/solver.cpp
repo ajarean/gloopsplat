@@ -13,6 +13,15 @@ Solver::Solver(float h, float gravity, float rho0, float epsilon,
 	computeKernels();
 	computeBounds();
 }
+// h: smoothing radius -- determines how close a particle has to be to be a neighbor
+// gravity: gravity
+// rho0: rest density -- target density to enforce per particle
+// epsilon: prevents division by 0 in lambda, weakens constraint
+// iterations: solver iterations per timestep
+// scorr_k: tensile instability term (the most impactful one) -- artificial pressure strength 
+// scorr_dq: tensile instability term -- reference distance as fraction of h
+// scorr_n: tensile instability term -- exponent controlling falloff of artificial pressure
+// xsph_c: viscosity; higher = more viscous fluid
 
 void Solver::computeBounds() {
 	glm::vec3 padding = glm::vec3(h); // catch particles on edges
@@ -25,32 +34,33 @@ void Solver::computeBounds() {
 void Solver::update(std::vector<Particle>& particles, std::vector<Collider*>& colliders, float dt) {
 	if (particles.size() == 0) return;
 
-	applyForcesAndPredict(particles, dt);
-	buildNeighborList(particles);
+	applyForcesAndPredict(particles, dt); // gravity; extrapolate positions
+	buildNeighborList(particles); // spatial grid query for neighbor lookups
 	for (int i = 0; i < iterations; i++) {
-		calculateLambda(particles);
-		updatePositions(particles);
-		applyBoundaryConditions(particles);
-		applyCollisions(particles, colliders);
+		calculateLambda(particles); // calculate per-particle density constraint scaling factor
+		updatePositions(particles); //apply position corrections
+		applyBoundaryConditions(particles); // clamp positions to scene bounds
+		applyCollisions(particles, colliders); // resolve collisions against colliders
 	}
-	updateVelocities(particles, dt);
-	computeDensities(particles);
-	computeNormals(particles);
-	applyViscosity(particles);
-	applySurfaceTension(particles, dt);
-	smoothNormals(particles);
+	updateVelocities(particles, dt); // derive velocity from position deltas; finalize positions
+	computeDensities(particles); // SPH density estimate at current position
+	computeNormals(particles); // surface normals for surface tension
+	applyViscosity(particles); // smooth velocity towards neighbors
+	applySurfaceTension(particles, dt); //akinci 2013: cohesion + curvature minimization 
+	smoothNormals(particles); // re-calculate normals, but smoothed for rendering
 }
 
 void Solver::computeKernels() {
 	float h6 = h*h*h*h*h*h;
 	float h9 = h6*h*h*h;
-	poly6_coeff = 315.0f/(64.0f*M_PI*h9);
-	spiky_coeff = -45.0f/(M_PI*h6);
-	scorr_wdq = poly6(scorr_dq*h, h, poly6_coeff);
+	poly6_coeff = 315.0f/(64.0f*M_PI*h9); // use poly6 kernel for density
+	spiky_coeff = -45.0f/(M_PI*h6); // use spiky kernel for position corrections
+	scorr_wdq = poly6(scorr_dq*h, h, poly6_coeff); // precompute W(delta_q) for s_corr  
 	grid.h = h;
 }
 
 //pbf muller et al algo1 lines 1-4
+// gravity; extrapolate positions
 void Solver::applyForcesAndPredict(std::vector<Particle>& particles, float dt) {
 	for (auto& p : particles) {
 		p.velocity += dt * gravity * g_dir;
@@ -58,6 +68,7 @@ void Solver::applyForcesAndPredict(std::vector<Particle>& particles, float dt) {
 	}
 }
 
+// spatial grid query for neighbor lookups
 void Solver::buildNeighborList(std::vector<Particle> &particles) {
 	grid.build(particles);
 	neighborList.resize(particles.size());
@@ -69,13 +80,14 @@ void Solver::buildNeighborList(std::vector<Particle> &particles) {
 }
 
 // pbf muller et al algo1 lines 21-23
+//derive velocity from position deltas; finalize positions
 void Solver::updateVelocities(std::vector<Particle>& particles, float dt) {
 	for (auto& p : particles) {
 		p.velocity = (p.predicted - p.position) / dt;
 		p.position = p.predicted;
 	}
 }
-
+// calculate per-particle density constraint scaling factor
 void Solver::calculateLambda(std::vector<Particle>& particles) {
 	#pragma omp parallel for schedule(dynamic)
 	for (int i = 0; i < particles.size(); i++) {
@@ -107,6 +119,7 @@ void Solver::calculateLambda(std::vector<Particle>& particles) {
 
 // eq12; algo 1 lines 13, 17
 // delta p_i = 1/rho0 * Sigma_j((lambda_i + lambda_j) * gradW(p_i - p_j, h))
+// apply position corrections
 void Solver::updatePositions(std::vector<Particle>& particles) {
 	std::vector<glm::vec3> deltas(particles.size(), glm::vec3(0.0f));
 	#pragma omp parallel for schedule(dynamic)
@@ -131,6 +144,7 @@ void Solver::updatePositions(std::vector<Particle>& particles) {
 }
 
 // algo 1 line 14
+// clamp positions to scene bounds
 void Solver::applyBoundaryConditions(std::vector<Particle>& particles) {
 	// axis aligned box for now; can replace with something more complex if needed
 	for (auto& p : particles) {
@@ -147,6 +161,7 @@ void Solver::applyBoundaryConditions(std::vector<Particle>& particles) {
 	}
 }
 
+// resolve collisions against colliders
 void Solver::applyCollisions(std::vector<Particle>& particles, std::vector<Collider*>& colliders) {
 	for (auto& p : particles) {
 		for (auto& c : colliders) {
@@ -155,6 +170,7 @@ void Solver::applyCollisions(std::vector<Particle>& particles, std::vector<Colli
 	}
 }
 
+// smooth velocity towards neighbors
 void Solver::applyViscosity(std::vector<Particle>& particles) {
 	if (xsph_c == 0) return;
 	std::vector<glm::vec3> deltas(particles.size(), glm::vec3(0.0f));
@@ -175,6 +191,7 @@ void Solver::applyViscosity(std::vector<Particle>& particles) {
 		particles[i].velocity += deltas[i];
 }
 
+// surface normals for surface tension
 void Solver::computeNormals(std::vector<Particle>& particles) {
 	#pragma omp parallel for schedule(dynamic)
 	for (int i = 0; i < particles.size(); i++) {
@@ -191,6 +208,7 @@ void Solver::computeNormals(std::vector<Particle>& particles) {
 
 // Akinci et al 2013 eq 5: combined surface tension force
 // F_st = K_ij * (F_cohesion + F_curvature)
+// cohesion + curvature minimization
 void Solver::applySurfaceTension(std::vector<Particle>& particles, float dt) {
 	if (gamma_st == 0) return;
 
@@ -217,6 +235,7 @@ void Solver::applySurfaceTension(std::vector<Particle>& particles, float dt) {
 	}
 }
 
+// re-calculate normals, but smoothed for rendering
 void Solver::smoothNormals(std::vector<Particle>& particles) {
 	std::vector<glm::vec3> smoothed_normals(particles.size(), glm::vec3(0.0f));
 
@@ -241,6 +260,7 @@ void Solver::smoothNormals(std::vector<Particle>& particles) {
 	}
 }
 
+// SPH density estimate at current position
 void Solver::computeDensities(std::vector<Particle>& particles) {
 	#pragma omp parallel for schedule(dynamic)
 	for (int i = 0; i < particles.size(); i++) {
