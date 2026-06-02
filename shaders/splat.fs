@@ -16,7 +16,6 @@ uniform float specular;
 uniform float roughness;
 uniform vec3 cameraPos;
 uniform int type; // [rgba, envMap, fresnel]
-uniform int specType; // [phong, ggx]
 uniform float colorStrength; // [0,1]
 
 out vec4 fragColor;
@@ -41,22 +40,9 @@ void main()
 	float F = F0 + (1.0 - F0) * pow(1.0 - ndv, 5.0);
 
 	float spec;
-	if (specType == 0) {
-		// blinn phong
-		float shininess = pow(1000, 1.0 - roughness);
-		spec = pow(max(dot(n, h), 0.0), shininess) * diff;
-	}
-	else {
-		// walter et al., GGX impl.
-		// tan^2(theta)v = (1-ndv^2)/ndv^2
-		float a2 = pow(roughness, 4.0); // a = roughness^2
-		float denom = ndh * ndh * (a2 - 1.0) + 1.0; // = a2*ndh² + 1 - ndh²
-		float D = a2 / (PI * denom * denom);
-		float G1_v = 2.0 * ndv / (ndv + sqrt(a2 + (1.0 - a2) * ndv * ndv));
-		float G1_l = 2.0 * diff / (diff + sqrt(a2 + (1.0 - a2) * diff * diff));
-		float G = G1_v*G1_l;
-		spec = (D * G * F) / max(4.0 * ndv * diff, 0.001) * diff;
-	}
+  // blinn phong
+  float shininess = pow(1000, 1.0 - roughness);
+  spec = pow(max(dot(n, h), 0.0), shininess) * diff;
 
 	vec3 c_color = vColor.rgb * min((0.4 + diffuse*0.6*diff), 1.0) + specular * vec3(spec);
 

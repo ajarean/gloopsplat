@@ -122,7 +122,6 @@ int main() {
 	vec3 lightDir = glm::normalize(glm::vec3(-1.0f, 1.0f, -1.0f));
 	float blur = 0.8f;
 	int shaderType = 0;
-	int shaderSpecType = 0;
 	float colorStrength = 0.5f;
 	bool showSkybox = true;
 
@@ -197,10 +196,6 @@ int main() {
 				if (ImGui::RadioButton("Env Map", shaderType == 1)) shaderType = 1;
 				ImGui::SameLine();
 				if (ImGui::RadioButton("Fresnel", shaderType == 2)) shaderType = 2;
-				ImGui::Text("Specular Type");
-				if (ImGui::RadioButton("Phong", shaderSpecType == 0)) shaderSpecType = 0;
-				ImGui::SameLine();
-				if (ImGui::RadioButton("GGX", shaderSpecType == 1)) shaderSpecType = 1;
 				ImGui::SeparatorText("RGBA (requires reset)");
 				ImGui::ColorPicker3("Color", &block.color[0]);
 				ImGui::SliderFloat("Opacity", &block.color[3], 0.01f, 1.0f);
@@ -334,7 +329,6 @@ int main() {
 			shader.setFloat("roughness", roughness);
 			shader.setFloat("diffuse", diffuse);
 			shader.setInt("type", shaderType);
-			shader.setInt("specType", shaderSpecType);
 			shader.setFloat("colorStrength", colorStrength);
 
 			glActiveTexture(GL_TEXTURE0);
